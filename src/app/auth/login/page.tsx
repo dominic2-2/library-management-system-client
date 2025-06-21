@@ -17,6 +17,7 @@ import Container from '@mui/material/Container';
 import { useAuth } from '@/providers/AuthProvider';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
+import { ENV } from '@/config/env';
 
 export default function LoginPage() {
   const { user, setUser } = useAuth();
@@ -28,22 +29,38 @@ export default function LoginPage() {
     }
   }, [user, router]);
 
-  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    const data = new FormData(event.currentTarget);
-    console.log({
-      email: data.get('email'),
-      password: data.get('password'),
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+  event.preventDefault();
+  const data = new FormData(event.currentTarget);
+  const email = data.get('email') as string;
+  const password = data.get('password') as string;
+
+  try {
+    const res = await fetch(`${ENV.apiUrl}/auth/login`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ email, password }),
     });
 
-    // Giả lập login
-    localStorage.setItem('accessToken', 'fake-token');
-    setUser({
-      id: '1',
-      email: data.get('email') as string,
-      role: 'Admin',
-    });
-  };
+    if (!res.ok) {
+      throw new Error('Đăng nhập thất bại');
+    }
+
+    const result = await res.json();
+
+    // Lưu token và set user
+    localStorage.setItem('accessToken', result.token);
+    setUser(result.user);
+
+    // Chuyển trang
+    router.push('/dashboard');
+  } catch (error) {
+    console.error('Lỗi đăng nhập:', error);
+    alert('Email hoặc mật khẩu không đúng');
+  }
+};
 
   return (
     <Container component="main" maxWidth="xs">
