@@ -1,0 +1,195 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+when you generate api, you need to provide data sample because my backend is not working now, so you need to help me can convert get data sample to get data from api when I need.
+Alway read all table that I have create to create data sample. This is my sql to generate table:
+
+CREATE TABLE roles (
+    role_id SERIAL PRIMARY KEY,
+    role_name VARCHAR(50) NOT NULL
+);
+
+CREATE TABLE users (
+    user_id SERIAL PRIMARY KEY,
+    username VARCHAR(50) NOT NULL UNIQUE,
+    password_hash VARCHAR(255) NOT NULL,
+    role_id INTEGER NOT NULL REFERENCES roles,
+    full_name VARCHAR(100) NOT NULL,
+    email VARCHAR(100) NOT NULL,
+    phone VARCHAR(20),
+    address VARCHAR(255),
+    create_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    is_active BOOLEAN DEFAULT TRUE
+);
+
+-- Danh mục
+CREATE TABLE categories (
+    category_id SERIAL PRIMARY KEY,
+    category_name VARCHAR(100) NOT NULL
+);
+
+-- Tác giả
+CREATE TABLE authors (
+    author_id SERIAL PRIMARY KEY,
+    author_name VARCHAR(100) NOT NULL,
+    bio TEXT
+);
+
+-- Tựa sách
+CREATE TABLE books (
+    book_id SERIAL PRIMARY KEY,
+    title VARCHAR(255) NOT NULL,
+    category_id INTEGER NOT NULL REFERENCES categories,
+    language VARCHAR(50), -- (Tiếng Việt, Tiếng Anh)
+    book_status VARCHAR(50),  -- ( 'Active', 'Inactive', 'Deleted' )
+    description TEXT
+);
+
+-- Quan hệ nhiều-nhiều giữa sách và tác giả
+CREATE TABLE books_authors (
+    book_id INTEGER NOT NULL REFERENCES books,
+    author_id INTEGER NOT NULL REFERENCES authors,
+    PRIMARY KEY (book_id, author_id)
+);
+
+CREATE TABLE book_variants (
+    variant_id SERIAL PRIMARY KEY,
+    volume_id INTEGER NOT NULL REFERENCES book_volumes,
+    publisher_id INTEGER REFERENCES publishers,
+    edition_id INTEGER REFERENCES editions,
+    publication_year INTEGER,
+    cover_type_id INTEGER REFERENCES cover_types,
+    paper_quality_id INTEGER REFERENCES paper_qualities,
+    price NUMERIC(10,2),
+    isbn VARCHAR(20),
+    notes TEXT
+);
+
+CREATE TABLE cover_types (
+    cover_type_id SERIAL PRIMARY KEY,
+    cover_type_name VARCHAR(100) NOT NULL UNIQUE
+);
+
+CREATE TABLE paper_qualities (
+    paper_quality_id SERIAL PRIMARY KEY,
+    paper_quality_name VARCHAR(100) NOT NULL UNIQUE
+);
+
+CREATE TABLE editions (
+    edition_id SERIAL PRIMARY KEY,
+    edition_name VARCHAR(100) NOT NULL UNIQUE
+);
+
+CREATE TABLE publishers (
+    publisher_id SERIAL PRIMARY KEY,
+vả    publisher_name VARCHAR(100) NOT NULL UNIQUE
+);
+
+CREATE TABLE book_volumes (
+    volume_id SERIAL PRIMARY KEY,
+    book_id INTEGER NOT NULL REFERENCES books,
+    volume_number INTEGER NOT NULL,      -- Tập số (1, 2, 3,...)
+    volume_title VARCHAR(255),           -- Tiêu đề riêng từng tập (nếu có)
+    description TEXT
+);
+
+
+
+
+-- Bản sao vật lý
+CREATE TABLE book_copies (
+    copy_id SERIAL PRIMARY KEY,
+    variant_id INTEGER NOT NULL REFERENCES book_variants,
+    
+    barcode VARCHAR(100) UNIQUE,      -- Mã vạch riêng từng cuốn
+    copy_status VARCHAR(50), --  ('Available','Borrowed','Reserved', 'Lost', 'Damaged')
+    location VARCHAR(100)     -- Nhập vị trí copy thủ công
+);
+
+
+
+CREATE TABLE reservations (
+    reservation_id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users,
+    variant_id INTEGER NOT NULL REFERENCES book_variants,
+    
+    reservation_date TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    expiration_date TIMESTAMP, -- khi sách có sẵn nhưng user không đến mượn thì hết hiệu lực
+    
+    reservation_status VARCHAR(50) NOT NULL,  --('Pending','Available','Collected','Canceled','Expired')
+    fulfilled_copy_id INTEGER REFERENCES book_copies,    -- staff cung cấp copy này cho đơn đặt
+    processed_by INTEGER REFERENCES users       -- staff đánh dấu trạng thái
+);
+
+-- Mượn sách
+CREATE TABLE loans (
+    loan_id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users,
+    copy_id INTEGER NOT NULL REFERENCES book_copies,
+
+    borrow_date TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    due_date TIMESTAMP NOT NULL,
+    return_date TIMESTAMP,
+
+    loan_status VARCHAR(50) NOT NULL,  --('Borrowed','Returned','Overdue')
+    fine_amount NUMERIC(10,2) DEFAULT 0,
+    extended BOOLEAN DEFAULT FALSE,         -- đã gia hạn chưa
+    reservation_id INTEGER REFERENCES reservations -- nếu đi kèm đặt giữ
+);
+
+CREATE TYPE notification_enum AS ENUM (
+    'DueDateReminder',
+    'FineNotice',
+    'BorrowConfirmed',
+    'ReturnConfirmed',
+    'AdminApprovalRequest',
+    'ReservationAvailable',
+    'ReservationCanceled',
+    'OverdueNotice',
+    'ExtendLoanReminder',
+    'ErrorAlert'
+);
+
+CREATE TYPE sender_enum AS ENUM (
+    'System',
+    'User',
+    'Staff'
+);
+
+CREATE TYPE notification_entity_enum AS ENUM (
+    'loans',
+    'reservations'
+);
+
+CREATE TABLE notifications (
+    notification_id SERIAL PRIMARY KEY,
+    
+    sender_id INTEGER,                           -- người gửi (nếu có)
+    sender_type sender_enum DEFAULT 'System',    -- loại actor gửi
+
+    receiver_id INTEGER REFERENCES users,        -- người nhận cụ thể (user hoặc staff)
+    for_staff BOOLEAN DEFAULT FALSE,             -- true nếu gửi cho nhóm staff (broadcast logic)
+    
+    message TEXT NOT NULL,
+    notification_date TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    
+    notification_type notification_enum NOT NULL,
+
+    read_status BOOLEAN DEFAULT FALSE,           -- người nhận đã đọc chưa
+
+    handled_status BOOLEAN DEFAULT FALSE,        -- staff đã xử lý chưa (chỉ dùng cho forstaff = true)
+    handled_by INTEGER REFERENCES users,         -- ai là người xử lý (nếu có)
+    handled_at TIMESTAMP,                        -- thời điểm xử lý
+
+    related_table notification_entity_enum,                   -- gợi ý: 'reservations', 'books', 'loans'
+    related_id INTEGER                           -- id liên quan, ví dụ reservation_id = 12
+);
+
+
+
+
+
+
+
