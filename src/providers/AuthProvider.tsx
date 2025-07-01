@@ -21,10 +21,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const tokenExpiration = localStorage.getItem('tokenExpiration');
 
     if (storedToken && tokenExpiration) {
-      const now = new Date();
       const exp = new Date(tokenExpiration);
-
-      if (exp > now) {
+      if (!isNaN(exp.getTime()) && exp > new Date()) {
         setToken(storedToken);
       } else {
         localStorage.removeItem('token');
@@ -32,6 +30,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     }
   }, []);
+
+  useEffect(() => {
+    if (token) {
+      const expiration = localStorage.getItem('tokenExpiration');
+      if (expiration) {
+        const timeout = new Date(expiration).getTime() - Date.now();
+        if (timeout > 0) {
+          const timer = setTimeout(() => logout(), timeout);
+          return () => clearTimeout(timer);
+        } else {
+          logout();
+        }
+      }
+    }
+  }, [token]);
 
   const login = (newToken: string, expiration: string) => {
     localStorage.setItem('token', newToken);
@@ -43,7 +56,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.removeItem('token');
     localStorage.removeItem('tokenExpiration');
     setToken(null);
-    router.push('/auth'); // hoặc chuyển hướng sang trang login
+    if (typeof window !== 'undefined') {
+      router.push('/auth');
+    }
   };
 
   const value: AuthContextType = {

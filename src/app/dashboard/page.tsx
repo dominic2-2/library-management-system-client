@@ -2,23 +2,45 @@
 
 import { useAuth } from '@/providers/AuthProvider';
 import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 
 export default function DashboardIndex() {
-  const { user } = useAuth();
+  const { token } = useAuth();
   const router = useRouter();
+  const [role, setRole] = useState<number | null>(null);
 
   useEffect(() => {
-    if (!user) {
-      router.push('/auth/login');
-    } else if (user.role === 'Admin') {
-      router.push('/dashboard/admin');
-    } else if (user.role === 'Staff') {
-      router.push('/dashboard/staff');
-    } else if (user.role === 'User') {
-      router.push('/dashboard/user');
+    if (!token) {
+      router.replace('/auth/login');
+      return;
     }
-  }, [user, router]);
+
+    const storedRole = localStorage.getItem('role');
+    if (storedRole) {
+      setRole(parseInt(storedRole, 10));
+    } else {
+      router.replace('/auth/login');
+    }
+  }, [token, router]);
+
+  useEffect(() => {
+    if (role !== null) {
+      switch (role) {
+        case 1: // Admin
+          router.replace('/admin/user-management');
+          break;
+        case 2: // Staff
+          router.replace('/dashboard/staff');
+          break;
+        case 3: // User
+          router.replace('/dashboard/homepage');
+          break;
+        default:
+          router.replace('/auth/login');
+          break;
+      }
+    }
+  }, [role, router]);
 
   return null;
 }

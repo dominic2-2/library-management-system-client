@@ -124,17 +124,8 @@ const AuthPage: React.FC = () => {
 
       if (response.ok && data.token && data.expiration) {
         login(data.token, data.expiration);
-
-        switch (data.role) {
-          case 3:
-            await router.push('features/user/profile');
-            break;
-          case 1:
-            await router.push('/admin/user-management');
-            break;
-          default:
-            setError('Không xác định được quyền truy cập.');
-        }
+        localStorage.setItem('role', data.role.toString());
+        router.push('/dashboard');
       } else {
         setError('Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin.');
       }
