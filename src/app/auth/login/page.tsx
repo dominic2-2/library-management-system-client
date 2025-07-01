@@ -66,6 +66,7 @@ interface RegisterData {
 interface AuthResponse {
   token: string;
   expiration: string;
+  role: number;
 }
 
 interface ApiResponse {
@@ -119,9 +120,21 @@ const AuthPage: React.FC = () => {
       });
 
       const data: AuthResponse = await response.json();
+      console.log('API response:', data);
 
       if (response.ok && data.token && data.expiration) {
-        login(data.token, data.expiration); // ✅ gọi hàm từ AuthProvider
+        login(data.token, data.expiration);
+
+        switch (data.role) {
+          case 3:
+            await router.push('features/user/profile');
+            break;
+          case 1:
+            await router.push('/admin/user-management');
+            break;
+          default:
+            setError('Không xác định được quyền truy cập.');
+        }
       } else {
         setError('Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin.');
       }
