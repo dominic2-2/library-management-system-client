@@ -1,47 +1,78 @@
 'use client';
 
-import { createContext, useContext, useEffect, useState } from 'react';
-
-interface User {
-  id: string;
-  email: string;
-  role: 'Admin' | 'Staff' | 'User' | null;
-}
+import React, { createContext, useContext, useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 
 interface AuthContextType {
-  user: User | null;
-  setUser: (user: User | null) => void;
+  token: string | null;
+  isAuthenticated: boolean;
+  login: (token: string, expiration: string) => void;
+  logout: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
-  const [user, setUser] = useState<User | null>(null);
+export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [token, setToken] = useState<string | null>(null);
+  const router = useRouter();
 
   useEffect(() => {
-    // TODO: Check token trong localStorage (MVP để tạm)
-    const token = localStorage.getItem('accessToken');
-    if (token) {
-      // Giả lập decode token
-      setUser({
-        id: '1',
-        email: 'admin@demo.com',
-        role: 'Admin',
-      });
+    const storedToken = localStorage.getItem('token');
+    const tokenExpiration = localStorage.getItem('tokenExpiration');
+
+    if (storedToken && tokenExpiration) {
+      const exp = new Date(tokenExpiration);
+      if (!isNaN(exp.getTime()) && exp > new Date()) {
+        setToken(storedToken);
+      } else {
+        localStorage.removeItem('token');
+        localStorage.removeItem('tokenExpiration');
+      }
     }
   }, []);
 
-  return (
-    <AuthContext.Provider value={{ user, setUser }}>
-      {children}
-    </AuthContext.Provider>
-  );
+  useEffect(() => {
+    if (token) {
+      const expiration = localStorage.getItem('tokenExpiration');
+      if (expiration) {
+        const timeout = new Date(expiration).getTime() - Date.now();
+        if (timeout > 0) {
+          const timer = setTimeout(() => logout(), timeout);
+          return () => clearTimeout(timer);
+        } else {
+          logout();
+        }
+      }
+    }
+  }, [token]);
+
+  const login = (newToken: string, expiration: string) => {
+    localStorage.setItem('token', newToken);
+    localStorage.setItem('tokenExpiration', expiration);
+    setToken(newToken);
+  };
+
+  const logout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('tokenExpiration');
+    setToken(null);
+    if (typeof window !== 'undefined') {
+      router.push('/auth');
+    }
+  };
+
+  const value: AuthContextType = {
+    token,
+    isAuthenticated: !!token,
+    login,
+    logout,
+  };
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
+  if (!context) throw new Error('useAuth must be used within an AuthProvider');
   return context;
 };
