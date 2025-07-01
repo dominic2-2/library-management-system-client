@@ -66,7 +66,12 @@ interface RegisterData {
 interface AuthResponse {
   token: string;
   expiration: string;
-  role: number;
+  user: {
+    id: number;
+    username: string;
+    email: string;
+    role: 'Admin' | 'Staff' | 'User';
+  };
 }
 
 interface ApiResponse {
@@ -120,16 +125,15 @@ const AuthPage: React.FC = () => {
       });
 
       const data: AuthResponse = await response.json();
-      console.log('API response:', data);
 
-      if (response.ok && data.token && data.expiration) {
-        login(data.token, data.expiration);
+      if (response.ok && data.token && data.expiration && data.user) {
+        login(data.token, data.expiration, data.user);
 
-        switch (data.role) {
-          case 3:
-            await router.push('features/user/profile');
+        switch (data.user.role) {
+          case 'User':
+            await router.push('/dashboard/homepage');
             break;
-          case 1:
+          case 'A':
             await router.push('/admin/user-management');
             break;
           default:
