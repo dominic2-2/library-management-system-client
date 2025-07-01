@@ -7,7 +7,7 @@ export default function HomeRedirect() {
   const router = useRouter();
 
   useEffect(() => {
-    router.push('/auth/login');
+    router.push('/loan');
   }, [router]);
 
   return null;
