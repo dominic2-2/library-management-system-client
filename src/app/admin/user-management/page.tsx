@@ -1,6 +1,7 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { Box, Typography, Button, Container, Paper, CircularProgress } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import { useUserManagement } from '@/features/user/useUserManagement';
@@ -42,7 +43,29 @@ const UserManagementPage = () => {
     isUsingFilter
   } = useUserManagement();
 
-  const { loading: authLoading } = useAuth();
+  const { isAuthenticated, loading: authLoading, user } = useAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+  if (!authLoading) {
+    if (!isAuthenticated) {
+      router.push('/auth/login');
+    } else if (user?.role !== 'Admin') {
+      router.push('/not-authorized'); // hoặc hiện dialog lỗi
+    }
+  }
+}, [authLoading, isAuthenticated, user]);
+
+  if (authLoading || !isAuthenticated) {
+    return (
+      <Box display="flex" justifyContent="center" alignItems="center" minHeight="70vh" gap={2}>
+        <CircularProgress />
+        <Typography variant="h6" color="text.secondary">
+          Đang xác thực tài khoản...
+        </Typography>
+      </Box>
+    );
+  }
 
   // Debug: Log state
   console.log('🟡 UserManagementPage state:', {

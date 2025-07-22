@@ -310,8 +310,7 @@ const UpdateProfile = () => {
                       helperText={errors.address}
                       fullWidth
                       required
-                      multiline
-                      rows={2}
+                      // Bỏ multiline và rows để làm single line giống như các field khác
                       sx={{
                         '& .MuiOutlinedInput-root': {
                           borderRadius: 2,
@@ -322,7 +321,7 @@ const UpdateProfile = () => {
                       }}
                       InputProps={{
                         startAdornment: (
-                          <Box sx={{ mr: 1.5, mt: 1, color: 'primary.main' }}>
+                          <Box sx={{ mr: 1.5, color: 'primary.main' }}>
                             <Home />
                           </Box>
                         )
