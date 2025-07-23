@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React from "react";
 import {
   Table,
   TableBody,
@@ -11,70 +11,32 @@ import {
   Paper,
   Button,
   Box,
-  TablePagination,
   CircularProgress,
   Typography,
   Chip,
 } from "@mui/material";
-import { Visibility, Edit, Delete } from "@mui/icons-material";
-import { BooksTableProps, BookWithDetails } from "@/types/book";
+import { Visibility, Edit } from "@mui/icons-material";
+import { BookWithDetails } from "@/types/book";
+
+interface BooksTableProps {
+  books: BookWithDetails[];
+  loading?: boolean;
+  onEdit: (bookId: number) => void;
+  onView: (bookId: number) => void;
+}
 
 export const BooksTable: React.FC<BooksTableProps> = ({
   books,
   loading = false,
   onEdit,
-  onDelete,
   onView,
 }) => {
-  const [page, setPage] = useState<number>(0);
-  const [rowsPerPage, setRowsPerPage] = useState<number>(10);
-
-  const handleChangePage = (event: unknown, newPage: number): void => {
-    setPage(newPage);
-  };
-
-  const handleChangeRowsPerPage = (
-    event: React.ChangeEvent<HTMLInputElement>
-  ): void => {
-    setRowsPerPage(parseInt(event.target.value, 10));
-    setPage(0);
-  };
-
   const handleView = (bookId: number): void => {
     onView(bookId);
   };
 
   const handleEdit = (bookId: number): void => {
     onEdit(bookId);
-  };
-
-  const handleDelete = (bookId: number): void => {
-    if (window.confirm("Are you sure you want to delete this book?")) {
-      onDelete(bookId);
-    }
-  };
-
-  const formatAuthors = (authors: { author_name: string }[]): string => {
-    return authors.map((author) => author.author_name).join(", ");
-  };
-
-  const formatPrice = (prices: number[]): string => {
-    if (prices.length === 0) return "-";
-    const minPrice = Math.min(...prices);
-    const maxPrice = Math.max(...prices);
-    if (minPrice === maxPrice) {
-      return `$${minPrice.toFixed(2)}`;
-    }
-    return `$${minPrice.toFixed(2)} - $${maxPrice.toFixed(2)}`;
-  };
-
-  const formatVolumes = (volumes: BookWithDetails["volumes"]): string => {
-    if (volumes.length === 0) return "-";
-    if (volumes.length === 1) {
-      const vol = volumes[0];
-      return vol.volume_title || `Volume ${vol.volume_number}`;
-    }
-    return `${volumes.length} volumes`;
   };
 
   const getStatusColor = (
@@ -115,11 +77,6 @@ export const BooksTable: React.FC<BooksTableProps> = ({
     );
   }
 
-  const paginatedBooks = books.slice(
-    page * rowsPerPage,
-    page * rowsPerPage + rowsPerPage
-  );
-
   return (
     <Paper sx={{ width: "100%", overflow: "hidden" }}>
       <TableContainer>
@@ -130,7 +87,7 @@ export const BooksTable: React.FC<BooksTableProps> = ({
                 Title
               </TableCell>
               <TableCell sx={{ fontWeight: "bold", bgcolor: "#f5f5f5" }}>
-                Category
+                Author
               </TableCell>
               <TableCell sx={{ fontWeight: "bold", bgcolor: "#f5f5f5" }}>
                 Language
@@ -139,13 +96,7 @@ export const BooksTable: React.FC<BooksTableProps> = ({
                 Status
               </TableCell>
               <TableCell sx={{ fontWeight: "bold", bgcolor: "#f5f5f5" }}>
-                Authors
-              </TableCell>
-              <TableCell sx={{ fontWeight: "bold", bgcolor: "#f5f5f5" }}>
-                Volumes
-              </TableCell>
-              <TableCell sx={{ fontWeight: "bold", bgcolor: "#f5f5f5" }}>
-                Price Range
+                Volume
               </TableCell>
               <TableCell sx={{ fontWeight: "bold", bgcolor: "#f5f5f5" }}>
                 Availability
@@ -156,23 +107,14 @@ export const BooksTable: React.FC<BooksTableProps> = ({
             </TableRow>
           </TableHead>
           <TableBody>
-            {paginatedBooks.length === 0 ? (
+            {books.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={9} align="center">
+                <TableCell colSpan={7} align="center">
                   <Typography color="textSecondary">No books found</Typography>
                 </TableCell>
               </TableRow>
             ) : (
-              paginatedBooks.map((book: BookWithDetails) => {
-                const allPrices = book.volumes.flatMap(
-                  (volume) =>
-                    volume.variants
-                      .map((variant) => variant.price)
-                      .filter(
-                        (price) => price !== undefined && price !== null
-                      ) as number[]
-                );
-
+              books.map((book: BookWithDetails) => {
                 return (
                   <TableRow
                     key={book.book_id}
@@ -186,7 +128,7 @@ export const BooksTable: React.FC<BooksTableProps> = ({
                     </TableCell>
                     <TableCell>
                       <Typography variant="body2">
-                        {book.category_name}
+                        {book.authors?.[0]?.author_name || "-"}
                       </Typography>
                     </TableCell>
                     <TableCell>
@@ -204,17 +146,7 @@ export const BooksTable: React.FC<BooksTableProps> = ({
                     </TableCell>
                     <TableCell>
                       <Typography variant="body2">
-                        {formatAuthors(book.authors)}
-                      </Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Typography variant="body2">
-                        {formatVolumes(book.volumes)}
-                      </Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Typography variant="body2">
-                        {formatPrice(allPrices)}
+                        {book.volumes?.[0]?.volume_number || "-"}
                       </Typography>
                     </TableCell>
                     <TableCell>
@@ -270,23 +202,6 @@ export const BooksTable: React.FC<BooksTableProps> = ({
                         >
                           Edit
                         </Button>
-                        <Button
-                          size="small"
-                          variant="contained"
-                          color="error"
-                          startIcon={<Delete />}
-                          onClick={() => handleDelete(book.book_id)}
-                          sx={{
-                            minWidth: "auto",
-                            px: 1,
-                            bgcolor: "#dc3545",
-                            "&:hover": {
-                              bgcolor: "#c82333",
-                            },
-                          }}
-                        >
-                          Delete
-                        </Button>
                       </Box>
                     </TableCell>
                   </TableRow>
@@ -296,18 +211,6 @@ export const BooksTable: React.FC<BooksTableProps> = ({
           </TableBody>
         </Table>
       </TableContainer>
-      <TablePagination
-        rowsPerPageOptions={[5, 10, 25, 50]}
-        component="div"
-        count={books.length}
-        rowsPerPage={rowsPerPage}
-        page={page}
-        onPageChange={handleChangePage}
-        onRowsPerPageChange={handleChangeRowsPerPage}
-        sx={{
-          borderTop: "1px solid rgba(224, 224, 224, 1)",
-        }}
-      />
     </Paper>
   );
 };

@@ -19,6 +19,7 @@ export interface User {
 export interface Category {
   category_id: number;
   category_name: string;
+  book_count: number;
 }
 
 export interface Author {
@@ -124,12 +125,4 @@ export interface BookWithDetails {
   reserved_copies: number;
   damaged_copies: number;
   lost_copies: number;
-}
-
-export interface BooksTableProps {
-  books: BookWithDetails[];
-  loading?: boolean;
-  onEdit: (bookId: number) => void;
-  onDelete: (bookId: number) => void;
-  onView: (bookId: number) => void;
 }

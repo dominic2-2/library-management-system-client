@@ -40,3 +40,10 @@ a {
     color-scheme: dark;
   }
 }
+
+/* Suppress browser extension attributes that cause hydration mismatches */
+[data-bis_register],
+[data-bis_skin_checked],
+[data-__processed__] {
+  /* These attributes are added by browser extensions and should be ignored */
+}

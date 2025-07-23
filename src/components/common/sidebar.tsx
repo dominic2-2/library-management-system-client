@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import {
   Drawer,
   List,
@@ -13,10 +13,12 @@ import {
   Avatar,
   Divider,
   Badge,
+  Collapse,
 } from "@mui/material";
 import {
   Dashboard as DashboardIcon,
   MenuBook as MenuBookIcon,
+  LibraryBooks as LibraryBooksIcon,
   PersonAdd as PersonAddIcon,
   Visibility as VisibilityIcon,
   Group as GroupIcon,
@@ -26,8 +28,14 @@ import {
   Autorenew as AutorenewIcon,
   Autorenew as CirculationIcon,
   PowerSettingsNew as LogoutIcon,
+  ExpandLess,
+  ExpandMore,
+  Book as BookIcon,
+  Style as StyleIcon,
+  Description as DescriptionIcon,
+  Business as BusinessIcon,
 } from "@mui/icons-material";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 
 interface SidebarProps {
   open: boolean;
@@ -43,6 +51,7 @@ interface MenuItem {
   icon: React.ReactNode;
   path: string;
   badge?: number;
+  children?: MenuItem[];
 }
 
 const menuItems: MenuItem[] = [
@@ -53,8 +62,47 @@ const menuItems: MenuItem[] = [
   },
   {
     text: "Library Books",
-    icon: <MenuBookIcon />,
+    icon: <LibraryBooksIcon />,
     path: "/book/manage",
+    children: [
+      {
+        text: "Book",
+        icon: <MenuBookIcon />,
+        path: "/dashboard/admin/book",
+      },
+      {
+        text: "Book Copy",
+        icon: <MenuBookIcon />,
+        path: "/dashboard/admin/book-copy",
+      },
+    ],
+  },
+  {
+    text: "Book Attributes",
+    icon: <CategoryIcon />,
+    path: "/dashboard/admin/book-attributes",
+    children: [
+      {
+        text: "Categories",
+        icon: <CategoryIcon />,
+        path: "/dashboard/admin/book-attributes/categories",
+      },
+      {
+        text: "Cover Types",
+        icon: <StyleIcon />,
+        path: "/dashboard/admin/book-attributes/cover-types",
+      },
+      {
+        text: "Paper Qualities",
+        icon: <DescriptionIcon />,
+        path: "/dashboard/admin/book-attributes/paper-qualities",
+      },
+      {
+        text: "Publishers",
+        icon: <BusinessIcon />,
+        path: "/dashboard/admin/book-attributes/publishers",
+      },
+    ],
   },
   {
     text: "Register Books",
@@ -82,11 +130,6 @@ const menuItems: MenuItem[] = [
     path: "/info",
   },
   {
-    text: "Books Categories",
-    icon: <CategoryIcon />,
-    path: "/book/categories",
-  },
-  {
     text: "Loan Re-new",
     icon: <AutorenewIcon />,
     path: "/loan/renew",
@@ -107,10 +150,31 @@ export const Sidebar: React.FC<SidebarProps> = ({
   currentUser,
 }) => {
   const router = useRouter();
+  const pathname = usePathname();
+  const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
 
   const handleNavigation = (path: string): void => {
     router.push(path);
     onClose();
+  };
+
+  const handleToggleExpand = (itemText: string): void => {
+    const newExpanded = new Set(expandedItems);
+    if (newExpanded.has(itemText)) {
+      newExpanded.delete(itemText);
+    } else {
+      newExpanded.add(itemText);
+    }
+    setExpandedItems(newExpanded);
+  };
+
+  const isActive = (path: string): boolean => {
+    return pathname === path;
+  };
+
+  const hasActiveChild = (item: MenuItem): boolean => {
+    if (!item.children) return false;
+    return item.children.some((child) => isActive(child.path));
   };
 
   const handleLogout = (): void => {
@@ -173,38 +237,99 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
       {/* Navigation Menu */}
       <List sx={{ py: 1 }}>
-        {menuItems.map((item) => (
-          <ListItem key={item.text} disablePadding>
-            <ListItemButton
-              onClick={() => handleNavigation(item.path)}
-              sx={{
-                px: 2,
-                py: 1.5,
-                "&:hover": {
-                  bgcolor: "rgba(255,255,255,0.08)",
-                },
-                color: "white",
-              }}
-            >
-              <ListItemIcon sx={{ color: "white", minWidth: 40 }}>
-                {item.badge !== undefined ? (
-                  <Badge badgeContent={item.badge} color="error">
-                    {item.icon}
-                  </Badge>
-                ) : (
-                  item.icon
-                )}
-              </ListItemIcon>
-              <ListItemText
-                primary={item.text}
-                primaryTypographyProps={{
-                  fontSize: "0.875rem",
-                  fontWeight: 400,
-                }}
-              />
-            </ListItemButton>
-          </ListItem>
-        ))}
+        {menuItems.map((item) => {
+          const isItemActive = isActive(item.path);
+          const isChildActive = hasActiveChild(item);
+          const shouldBeExpanded =
+            expandedItems.has(item.text) || isChildActive;
+
+          return (
+            <React.Fragment key={item.text}>
+              <ListItem disablePadding>
+                <ListItemButton
+                  onClick={() => {
+                    if (item.children) {
+                      handleToggleExpand(item.text);
+                    } else {
+                      handleNavigation(item.path);
+                    }
+                  }}
+                  sx={{
+                    px: 2,
+                    py: 1.5,
+                    "&:hover": {
+                      bgcolor: "rgba(255,255,255,0.08)",
+                    },
+                    color: "white",
+                    bgcolor:
+                      isItemActive || isChildActive
+                        ? "rgba(255,255,255,0.12)"
+                        : "transparent",
+                  }}
+                >
+                  <ListItemIcon sx={{ color: "white", minWidth: 40 }}>
+                    {item.badge !== undefined ? (
+                      <Badge badgeContent={item.badge} color="error">
+                        {item.icon}
+                      </Badge>
+                    ) : (
+                      item.icon
+                    )}
+                  </ListItemIcon>
+                  <ListItemText
+                    primary={item.text}
+                    primaryTypographyProps={{
+                      fontSize: "0.875rem",
+                      fontWeight: isItemActive || isChildActive ? 600 : 400,
+                    }}
+                  />
+                  {item.children &&
+                    (shouldBeExpanded ? <ExpandLess /> : <ExpandMore />)}
+                </ListItemButton>
+              </ListItem>
+
+              {/* Render children if item has children */}
+              {item.children && (
+                <Collapse in={shouldBeExpanded} timeout="auto" unmountOnExit>
+                  <List component="div" disablePadding>
+                    {item.children.map((child) => {
+                      const isChildItemActive = isActive(child.path);
+                      return (
+                        <ListItem key={child.text} disablePadding>
+                          <ListItemButton
+                            onClick={() => handleNavigation(child.path)}
+                            sx={{
+                              pl: 4,
+                              py: 1,
+                              "&:hover": {
+                                bgcolor: "rgba(255,255,255,0.08)",
+                              },
+                              color: "white",
+                              bgcolor: isChildItemActive
+                                ? "rgba(255,255,255,0.12)"
+                                : "transparent",
+                            }}
+                          >
+                            <ListItemIcon sx={{ color: "white", minWidth: 40 }}>
+                              {child.icon}
+                            </ListItemIcon>
+                            <ListItemText
+                              primary={child.text}
+                              primaryTypographyProps={{
+                                fontSize: "0.875rem",
+                                fontWeight: isChildItemActive ? 600 : 400,
+                              }}
+                            />
+                          </ListItemButton>
+                        </ListItem>
+                      );
+                    })}
+                  </List>
+                </Collapse>
+              )}
+            </React.Fragment>
+          );
+        })}
       </List>
 
       {/* Logout Button at Bottom */}

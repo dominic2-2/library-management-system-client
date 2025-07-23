@@ -1,24 +1,69 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Library Management System Client
+
+This is a [Next.js](https://nextjs.org) project for the Library Management System frontend, built with TypeScript and Material-UI.
+
+## Features
+
+- 📚 Book management with OData integration
+- 🔍 Advanced search and filtering
+- 📱 Responsive design with Material-UI
+- 🔐 Role-based access control
+- 📊 Dashboard with analytics
+
+## Prerequisites
+
+- Node.js 18+
+- .NET 8+ backend running with OData support
+- Environment configuration
+
+## Environment Setup
+
+Create a `.env.local` file in the root directory with the following configuration:
+
+```bash
+# API Configuration
+NEXT_PUBLIC_API_URL=http://localhost:5027
+
+# Example for production (update as needed)
+# NEXT_PUBLIC_API_URL=https://your-api-domain.com/api
+```
 
 ## Getting Started
 
-First, run the development server:
+1. Install dependencies:
+
+```bash
+npm install
+# or
+yarn install
+```
+
+2. Start the development server:
 
 ```bash
 npm run dev
 # or
 yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+3. Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## API Integration
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+This application integrates with a .NET OData backend. The main endpoints are:
+
+- **Books**: `/manage/Book` - CRUD operations for books
+- **Categories**: `/manage/Category` - Book categories
+- **Authors**: `/manage/Author` - Book authors
+
+### OData Features Used
+
+- `$expand` - Include related entities (authors, volumes, variants)
+- `$filter` - Filter results by various criteria
+- `$search` - Full-text search across multiple fields
+- `$orderby` - Sort results
+- `$top` & `$skip` - Pagination support
+- `$count` - Get total count for pagination
 
 ## Learn More
 
