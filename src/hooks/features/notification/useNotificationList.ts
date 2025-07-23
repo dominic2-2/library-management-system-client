@@ -11,7 +11,7 @@ export const useNotificationList = (typeFilter?: string) => {
                 : `/notifications?$orderby=notificationDate desc`;
 
             const res = await axios.get(query);
-            return res.data.value; // dùng OData
+            return res.data.value; 
         },
     });
 };
