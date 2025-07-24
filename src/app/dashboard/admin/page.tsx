@@ -1,6 +1,7 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useState } from "react";
+import { Grid } from "@mui/material";
 import {
   Box,
   Typography,
@@ -9,6 +10,7 @@ import {
   CardActions,
   Button,
   Paper,
+  CircularProgress,
 } from "@mui/material";
 import {
   MenuBook as BookIcon,
@@ -18,9 +20,39 @@ import {
   Business as BusinessIcon,
 } from "@mui/icons-material";
 import { useRouter } from "next/navigation";
+import {
+  fetchDashboardSummary,
+  fetchMonthlyLoans,
+  DashboardSummary,
+  MonthlyLoan,
+} from "@/services/dashboard-service";
+
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  CartesianGrid,
+  ResponsiveContainer,
+  AreaChart,
+  Area,
+} from "recharts";
 
 export default function AdminDashboardPage() {
   const router = useRouter();
+  const [summary, setSummary] = useState<DashboardSummary | null>(null);
+  const [monthlyLoans, setMonthlyLoans] = useState<MonthlyLoan[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    Promise.all([
+      fetchDashboardSummary().then(setSummary),
+      fetchMonthlyLoans().then(setMonthlyLoans),
+    ])
+      .catch(console.error)
+      .finally(() => setLoading(false));
+  }, []);
 
   const dashboardItems = [
     {
@@ -78,110 +110,157 @@ export default function AdminDashboardPage() {
         categories, and system settings.
       </Typography>
 
-      <Box sx={{ display: "flex", flexWrap: "wrap", gap: 3 }}>
-        {dashboardItems.map((item) => (
-          <Card
-            key={item.title}
-            sx={{
-              width: {
-                xs: "100%",
-                sm: "calc(50% - 12px)",
-                md: "calc(33.333% - 16px)",
-              },
-              minWidth: 280,
-              display: "flex",
-              flexDirection: "column",
-              transition: "transform 0.2s, box-shadow 0.2s",
-              "&:hover": {
-                transform: "translateY(-4px)",
-                boxShadow: "0 8px 25px rgba(0,0,0,0.15)",
-              },
-            }}
-          >
-            <CardContent sx={{ flexGrow: 1, textAlign: "center", p: 3 }}>
-              <Box sx={{ mb: 2 }}>{item.icon}</Box>
-              <Typography
-                variant="h6"
-                component="h2"
-                sx={{ fontWeight: "bold", mb: 1, color: item.color }}
-              >
-                {item.title}
+
+      {/* THỐNG KÊ */}
+      <Paper sx={{ mt: 4, p: 3 }}>
+        <Typography variant="h6" sx={{ fontWeight: "bold", mb: 2 }}>
+          Thống Kê Nhanh
+        </Typography>
+
+        {loading ? (
+          <CircularProgress />
+        ) : (
+          <>
+            <Box sx={{ display: "flex", flexWrap: "wrap", gap: 3 }}>
+              <Box sx={{ textAlign: "center", flex: "1 1 200px" }}>
+                <Typography variant="h4" sx={{ fontWeight: "bold", color: "#1e3a8a" }}>
+                  {summary?.totalLoans ?? "--"}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">Tổng lượt mượn</Typography>
+              </Box>
+              <Box sx={{ textAlign: "center", flex: "1 1 200px" }}>
+                <Typography variant="h4" sx={{ fontWeight: "bold", color: "#dc2626" }}>
+                  {summary?.overdueLoans ?? "--"}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">Mượn quá hạn</Typography>
+              </Box>
+              <Box sx={{ textAlign: "center", flex: "1 1 200px" }}>
+                <Typography variant="h4" sx={{ fontWeight: "bold", color: "#059669" }}>
+                  {summary?.totalFines.toLocaleString("vi-VN")}₫
+                </Typography>
+                <Typography variant="body2" color="text.secondary">Tiền phạt</Typography>
+              </Box>
+              <Box sx={{ textAlign: "center", flex: "1 1 200px" }}>
+                <Typography variant="h4" sx={{ fontWeight: "bold", color: "#7c3aed" }}>
+                  {summary?.totalReservations ?? "--"}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">Đặt giữ</Typography>
+              </Box>
+            </Box>
+
+            {/* 📊 Biểu đồ cột */}
+            <Box sx={{ mt: 5 }}>
+              <Typography variant="h6" sx={{ fontWeight: "bold", mb: 2 }}>
+                Sách Theo Danh Mục
               </Typography>
-              <Typography variant="body2" color="text.secondary">
-                {item.description}
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart
+                  data={Object.entries(summary?.booksByCategory || {})
+                    .filter(([key]) => key !== "$id")
+                    .map(([label, value]) => ({
+                      label,
+                      value,
+                    })
+                    )}
+                  margin={{ top: 20, right: 30, left: 0, bottom: 40 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="label" interval={0} height={60} />
+                  <YAxis />
+                  <Tooltip />
+                  <Bar dataKey="value" fill="#38bdf8" />
+                </BarChart>
+              </ResponsiveContainer>
+            </Box>
+
+            {/* 📈 Biểu đồ dòng */}
+            <Box sx={{ mt: 5 }}>
+              <Typography variant="h6" sx={{ fontWeight: "bold", mb: 1 }}>
+                Lượt Mượn Theo Tháng
               </Typography>
-            </CardContent>
-            <CardActions sx={{ justifyContent: "center", pb: 2 }}>
-              <Button
-                variant="contained"
-                onClick={() => handleNavigate(item.path)}
+              <Typography variant="body2" sx={{ mb: 2 }}>
+                Thống kê số lượt mượn sách trong từng tháng.
+              </Typography>
+              <ResponsiveContainer width="100%" height={300}>
+                <AreaChart
+                  data={monthlyLoans}
+                  margin={{ top: 20, right: 30, left: 0, bottom: 0 }}
+                >
+                  <defs>
+                    <linearGradient id="colorLoans" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#6366f1" stopOpacity={0.8} />
+                      <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="month" />
+                  <YAxis />
+                  <Tooltip />
+                  <Area
+                    type="monotone"
+                    dataKey="count"
+                    stroke="#6366f1"
+                    fillOpacity={1}
+                    fill="url(#colorLoans)"
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            </Box>
+          </>
+        )}
+      </Paper>
+      ...
+
+      {/* MENU DASHBOARD */}
+      <Box sx={{ mt: 5 }}>
+        <Grid container spacing={3}>
+          {dashboardItems.map((item) => (
+            <Grid key={item.title} item xs={12} sm={6} md={4}>
+              <Card
                 sx={{
-                  bgcolor: item.color,
+                  height: "100%",
+                  display: "flex",
+                  flexDirection: "column",
+                  justifyContent: "space-between",
+                  boxShadow: 2,
+                  transition: "0.3s",
                   "&:hover": {
-                    bgcolor: item.color,
-                    opacity: 0.9,
+                    transform: "translateY(-4px)",
+                    boxShadow: "0 8px 25px rgba(0,0,0,0.15)",
                   },
                 }}
               >
-                Manage {item.title}
-              </Button>
-            </CardActions>
-          </Card>
-        ))}
+                <CardContent sx={{ textAlign: "center" }}>
+                  <Box sx={{ mb: 2 }}>{item.icon}</Box>
+                  <Typography variant="h6" sx={{ fontWeight: "bold", color: item.color }}>
+                    {item.title}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    {item.description}
+                  </Typography>
+                </CardContent>
+                <CardActions sx={{ justifyContent: "center", pb: 2 }}>
+                  <Button
+                    variant="contained"
+                    sx={{
+                      bgcolor: item.color,
+                      "&:hover": {
+                        bgcolor: item.color,
+                        opacity: 0.9,
+                      },
+                    }}
+                    onClick={() => handleNavigate(item.path)}
+                  >
+                    Manage {item.title}
+                  </Button>
+                </CardActions>
+              </Card>
+            </Grid>
+          ))}
+        </Grid>
       </Box>
 
-      {/* Quick Stats */}
-      <Paper sx={{ mt: 4, p: 3 }}>
-        <Typography variant="h6" sx={{ fontWeight: "bold", mb: 2 }}>
-          Quick Statistics
-        </Typography>
-        <Box sx={{ display: "flex", flexWrap: "wrap", gap: 3 }}>
-          <Box sx={{ textAlign: "center", flex: "1 1 200px" }}>
-            <Typography
-              variant="h4"
-              sx={{ fontWeight: "bold", color: "#1e3a8a" }}
-            >
-              1,234
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              Total Books
-            </Typography>
-          </Box>
-          <Box sx={{ textAlign: "center", flex: "1 1 200px" }}>
-            <Typography
-              variant="h4"
-              sx={{ fontWeight: "bold", color: "#059669" }}
-            >
-              56
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              Categories
-            </Typography>
-          </Box>
-          <Box sx={{ textAlign: "center", flex: "1 1 200px" }}>
-            <Typography
-              variant="h4"
-              sx={{ fontWeight: "bold", color: "#dc2626" }}
-            >
-              12
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              Cover Types
-            </Typography>
-          </Box>
-          <Box sx={{ textAlign: "center", flex: "1 1 200px" }}>
-            <Typography
-              variant="h4"
-              sx={{ fontWeight: "bold", color: "#7c3aed" }}
-            >
-              8
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              Paper Qualities
-            </Typography>
-          </Box>
-        </Box>
-      </Paper>
+
     </Box>
   );
 }
