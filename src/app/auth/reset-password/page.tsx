@@ -1,412 +1,499 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Box,
   Container,
   Paper,
-  TextField,
-  Button,
   Typography,
+  TextField,
+  InputAdornment,
+  Button,
   Alert,
   CircularProgress,
-  InputAdornment,
   IconButton,
+  useTheme,
+  alpha,
+  Fade,
   Card,
   CardContent,
-  LinearProgress
+  Stack
 } from '@mui/material';
 import { 
+  Lock, 
   Visibility, 
   VisibilityOff, 
-  Lock, 
-  ArrowBack, 
-  CheckCircle,
-  Error as ErrorIcon
+  VpnKey,
+  CheckCircleOutline,
+  ErrorOutline 
 } from '@mui/icons-material';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { ENV } from '@/config/env';
-
-interface ResetPasswordData {
-  token: string;
-  newPassword: string;
-  confirmPassword: string;
-}
-
-interface PasswordStrength {
-  score: number;
-  label: string;
-  color: 'error' | 'warning' | 'info' | 'success';
-}
+import { useSearchParams, useRouter } from 'next/navigation';
+import { AuthService } from '@/services/auth.service';
+import { ResetPasswordData } from '@/features/auth/auth.types';
+import { validatePassword } from '@/utils/validation'; // ✅ Import validation
 
 const ResetPasswordPage: React.FC = () => {
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
-  const [tokenValid, setTokenValid] = useState<boolean | null>(null);
-  const [countdown, setCountdown] = useState(3);
-  const router = useRouter();
-  const searchParams = useSearchParams();
-
   const [formData, setFormData] = useState<ResetPasswordData>({
     token: '',
     newPassword: '',
     confirmPassword: ''
   });
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [success, setSuccess] = useState('');
+  const [error, setError] = useState('');
+  
+  // ✅ Validation error states - Allow both null and undefined
+  const [validationErrors, setValidationErrors] = useState<{
+    newPassword?: string | null;
+    confirmPassword?: string | null;
+  }>({});
+  
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const theme = useTheme();
 
-  // Check password strength
-  const getPasswordStrength = (password: string): PasswordStrength => {
-    if (password.length === 0) return { score: 0, label: '', color: 'error' };
-    if (password.length < 6) return { score: 25, label: 'Yếu', color: 'error' };
-    if (password.length < 8) return { score: 50, label: 'Trung bình', color: 'warning' };
-    if (password.length < 12) return { score: 75, label: 'Mạnh', color: 'info' };
-    return { score: 100, label: 'Rất mạnh', color: 'success' };
+  // ✅ Password strength checker
+  type PasswordLevel = 'weak' | 'medium' | 'strong';
+  
+  const getPasswordStrength = (password: string) => {
+    let strength = 0;
+    const checks = {
+      length: password.length >= 8,
+      uppercase: /[A-Z]/.test(password),
+      lowercase: /[a-z]/.test(password),
+      number: /\d/.test(password),
+      special: /[!@#$%^&*(),.?":{}|<>]/.test(password)
+    };
+
+    strength = Object.values(checks).filter(Boolean).length;
+    
+    const level: PasswordLevel = strength <= 2 ? 'weak' : strength <= 4 ? 'medium' : 'strong';
+    
+    return {
+      score: strength,
+      checks,
+      level
+    };
   };
 
   const passwordStrength = getPasswordStrength(formData.newPassword);
 
-  // Validate passwords match
-  const passwordsMatch = formData.newPassword === formData.confirmPassword && formData.confirmPassword.length > 0;
+  const strengthColor: Record<PasswordLevel, string> = {
+    weak: theme.palette.error.main,
+    medium: theme.palette.warning.main,
+    strong: theme.palette.success.main
+  };
+
+  const strengthText: Record<PasswordLevel, string> = {
+    weak: 'Yếu',
+    medium: 'Trung bình', 
+    strong: 'Mạnh'
+  };
 
   useEffect(() => {
-    // Get token from URL parameters
     const token = searchParams.get('token');
     if (token) {
       setFormData(prev => ({ ...prev, token }));
-      setTokenValid(true);
     } else {
-      setTokenValid(false);
-      setError('Token không hợp lệ hoặc bị thiếu. Vui lòng thử lại với liên kết mới.');
+      setError('Liên kết không hợp lệ hoặc đã hết hạn.');
     }
   }, [searchParams]);
 
-  // Countdown timer for redirect
-  useEffect(() => {
-    let timer: NodeJS.Timeout;
-    if (success && countdown > 0) {
-      timer = setTimeout(() => {
-        setCountdown(countdown - 1);
-      }, 1000);
-    } else if (success && countdown === 0) {
-      router.push('/auth/login');
+  const handleChange =
+    (key: keyof ResetPasswordData) => (e: React.ChangeEvent<HTMLInputElement>) => {
+      const value = e.target.value;
+      setFormData(prev => ({ ...prev, [key]: value }));
+      setError('');
+      setSuccess('');
+      
+      // ✅ Real-time validation
+      if (key === 'newPassword') {
+        const passwordError = validatePassword(value);
+        setValidationErrors(prev => ({ 
+          ...prev, 
+          newPassword: passwordError 
+        }));
+        
+        // Check confirm password match if it exists
+        if (formData.confirmPassword) {
+          const confirmError = value !== formData.confirmPassword ? 'Mật khẩu xác nhận không khớp' : null;
+          setValidationErrors(prev => ({ 
+            ...prev, 
+            confirmPassword: confirmError 
+          }));
+        }
+      }
+      
+      if (key === 'confirmPassword') {
+        const confirmError = value !== formData.newPassword ? 'Mật khẩu xác nhận không khớp' : null;
+        setValidationErrors(prev => ({ 
+          ...prev, 
+          confirmPassword: confirmError 
+        }));
+      }
+    };
+
+  // ✅ Validation form
+  const validateForm = (): boolean => {
+    const errors: { newPassword?: string | null; confirmPassword?: string | null } = {};
+    
+    const passwordError = validatePassword(formData.newPassword);
+    if (passwordError) errors.newPassword = passwordError;
+    
+    if (formData.newPassword !== formData.confirmPassword) {
+      errors.confirmPassword = 'Mật khẩu xác nhận không khớp';
     }
-    return () => clearTimeout(timer);
-  }, [success, countdown, router]);
+    
+    setValidationErrors(errors);
+    return Object.values(errors).every(error => !error);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setSuccess('');
+
+    const { token, newPassword, confirmPassword } = formData;
+
+    if (!token || !newPassword || !confirmPassword) {
+      setError('Vui lòng điền đầy đủ thông tin.');
+      return;
+    }
+
+    // ✅ Validation trước khi submit
+    if (!validateForm()) {
+      return;
+    }
+
     setLoading(true);
-
-    // Validation
-    if (!formData.token) {
-      setError('Token không hợp lệ');
-      setLoading(false);
-      return;
-    }
-
-    if (formData.newPassword.length < 6) {
-      setError('Mật khẩu phải có ít nhất 6 ký tự');
-      setLoading(false);
-      return;
-    }
-
-    if (formData.newPassword !== formData.confirmPassword) {
-      setError('Mật khẩu xác nhận không khớp');
-      setLoading(false);
-      return;
-    }
-
     try {
-      const response = await fetch(`${ENV.apiUrl}/auth/reset-password`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          token: formData.token,
-          newPassword: formData.newPassword
-        }),
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        setSuccess(data.message || 'Mật khẩu đã được đặt lại thành công!');
-        // Clear form
-        setFormData(prev => ({
-          ...prev,
-          newPassword: '',
-          confirmPassword: ''
-        }));
-        setCountdown(3); // Start countdown
+      const res = await AuthService.resetPassword({ token, newPassword, confirmPassword });
+      if (res.message) {
+        setSuccess('Đặt lại mật khẩu thành công! Đang chuyển hướng...');
+        setTimeout(() => {
+          router.push('/auth/login');
+        }, 3000);
       } else {
-        setError(data.message || 'Có lỗi xảy ra khi đặt lại mật khẩu');
+        setError(res.errorMessage || 'Đặt lại mật khẩu thất bại');
       }
-    } catch (err) {
-      setError('Không thể kết nối đến server. Vui lòng thử lại sau.');
+    } catch (err: any) {
+      setError(err.message || 'Có lỗi xảy ra khi đặt lại mật khẩu');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleBackToLogin = () => {
-    router.push('/auth/login');
-  };
-
-  const handleForgotPassword = () => {
-    router.push('/auth/forgot-password');
-  };
-
-  const handleInputChange = (field: keyof ResetPasswordData) => (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: e.target.value
-    }));
-    // Clear errors when user starts typing
-    if (error) setError('');
-  };
-
-  // If token is invalid, show error state
-  if (tokenValid === false) {
-    return (
-      <Container component="main" maxWidth="sm">
-        <Box sx={{ marginTop: 8, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-          <Paper elevation={3} sx={{ width: '100%', p: 4 }}>
-            <Box sx={{ textAlign: 'center' }}>
-              <ErrorIcon sx={{ fontSize: 60, color: 'error.main', mb: 2 }} />
-              <Typography variant="h5" gutterBottom>
-                Liên kết không hợp lệ
-              </Typography>
-              <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
-                Liên kết đặt lại mật khẩu không hợp lệ hoặc đã hết hạn.
-              </Typography>
-              <Button
-                variant="contained"
-                onClick={handleForgotPassword}
-                sx={{ mr: 2 }}
-              >
-                Gửi lại liên kết
-              </Button>
-              <Button
-                variant="outlined"
-                onClick={handleBackToLogin}
-              >
-                Quay lại đăng nhập
-              </Button>
-            </Box>
-          </Paper>
-        </Box>
-      </Container>
-    );
-  }
+  const hasValidationErrors = Object.values(validationErrors).some(error => !!error);
 
   return (
-    <Container component="main" maxWidth="sm">
-      <Box
-        sx={{
-          marginTop: 8,
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-        }}
-      >
-        <Paper elevation={3} sx={{ width: '100%', p: 4 }}>
-          {/* Header with Back Button */}
-          <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
-            <Button
-              startIcon={<ArrowBack />}
-              onClick={handleBackToLogin}
-              variant="text"
-              sx={{ mr: 2 }}
+    <Box
+      sx={{
+        minHeight: '100vh',
+        background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.1)} 0%, ${alpha(theme.palette.secondary.main, 0.05)} 100%)`,
+        display: 'flex',
+        alignItems: 'center',
+        py: 4
+      }}
+    >
+      <Container maxWidth="sm">
+        <Fade in timeout={600}>
+          <Card
+            elevation={20}
+            sx={{
+              borderRadius: 4,
+              background: 'rgba(255, 255, 255, 0.95)',
+              backdropFilter: 'blur(20px)',
+              border: `1px solid ${alpha(theme.palette.primary.main, 0.1)}`,
+              overflow: 'hidden'
+            }}
+          >
+            {/* Header */}
+            <Box
+              sx={{
+                background: `linear-gradient(135deg, ${theme.palette.primary.main}, ${theme.palette.primary.dark})`,
+                color: 'white',
+                p: 3,
+                textAlign: 'center'
+              }}
             >
-              Quay lại
-            </Button>
-            <Typography component="h1" variant="h5" sx={{ flexGrow: 1, textAlign: 'center' }}>
-              Đặt lại mật khẩu
-            </Typography>
-          </Box>
+              <VpnKey sx={{ fontSize: 48, mb: 1 }} />
+              <Typography variant="h4" sx={{ fontWeight: 700, mb: 1 }}>
+                Đặt lại mật khẩu
+              </Typography>
+              <Typography variant="body1" sx={{ opacity: 0.9 }}>
+                Tạo mật khẩu mới cho tài khoản của bạn
+              </Typography>
+            </Box>
 
-          {/* Alert Messages */}
-          {error && (
-            <Alert severity="error" sx={{ mb: 3 }}>
-              {error}
-            </Alert>
-          )}
-
-          {success && (
-            <Alert severity="success" sx={{ mb: 3 }}>
-              <Box>
-                <Typography variant="body1" sx={{ mb: 1 }}>
-                  {success}
-                </Typography>
-                <Typography variant="body2">
-                  Tự động chuyển về trang đăng nhập trong {countdown} giây...
-                </Typography>
-              </Box>
-            </Alert>
-          )}
-
-          {/* Main Form Card */}
-          <Card variant="outlined">
             <CardContent sx={{ p: 4 }}>
+              {/* Description */}
               <Box sx={{ textAlign: 'center', mb: 4 }}>
-                <Lock sx={{ fontSize: 60, color: 'primary.main', mb: 2 }} />
-                <Typography variant="h6" gutterBottom>
-                  Tạo mật khẩu mới
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Mật khẩu mới phải có ít nhất 6 ký tự và khác với mật khẩu cũ.
+                <Typography variant="body1" color="text.secondary" sx={{ lineHeight: 1.6 }}>
+                  Vui lòng nhập mật khẩu mới. Mật khẩu phải đảm bảo tính bảo mật cao.
                 </Typography>
               </Box>
 
-              <Box component="form" onSubmit={handleSubmit}>
-                {/* New Password */}
-                <TextField
-                  margin="normal"
-                  required
-                  fullWidth
-                  label="Mật khẩu mới"
-                  type={showPassword ? 'text' : 'password'}
-                  value={formData.newPassword}
-                  onChange={handleInputChange('newPassword')}
-                  disabled={loading || !!success}
-                  InputProps={{
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <Lock />
-                      </InputAdornment>
-                    ),
-                    endAdornment: (
-                      <InputAdornment position="end">
-                        <IconButton
-                          onClick={() => setShowPassword(!showPassword)}
-                          edge="end"
-                        >
-                          {showPassword ? <VisibilityOff /> : <Visibility />}
-                        </IconButton>
-                      </InputAdornment>
-                    ),
+              {/* Alerts */}
+              {error && (
+                <Alert 
+                  severity="error" 
+                  icon={<ErrorOutline />}
+                  sx={{ 
+                    mb: 3,
+                    borderRadius: 2,
+                    background: alpha(theme.palette.error.main, 0.1),
+                    border: `1px solid ${alpha(theme.palette.error.main, 0.2)}`
                   }}
-                />
-
-                {/* Password Strength Indicator */}
-                {formData.newPassword && (
-                  <Box sx={{ mt: 1, mb: 2 }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                      <Typography variant="body2" sx={{ flexGrow: 1 }}>
-                        Độ mạnh mật khẩu: <strong>{passwordStrength.label}</strong>
-                      </Typography>
-                    </Box>
-                    <LinearProgress
-                      variant="determinate"
-                      value={passwordStrength.score}
-                      color={passwordStrength.color}
-                      sx={{ height: 8, borderRadius: 4 }}
-                    />
-                  </Box>
-                )}
-
-                {/* Confirm Password */}
-                <TextField
-                  margin="normal"
-                  required
-                  fullWidth
-                  label="Xác nhận mật khẩu mới"
-                  type={showConfirmPassword ? 'text' : 'password'}
-                  value={formData.confirmPassword}
-                  onChange={handleInputChange('confirmPassword')}
-                  disabled={loading || !!success}
-                  error={formData.confirmPassword.length > 0 && !passwordsMatch}
-                  helperText={
-                    formData.confirmPassword.length > 0 && !passwordsMatch
-                      ? 'Mật khẩu xác nhận không khớp'
-                      : ''
-                  }
-                  InputProps={{
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <Lock />
-                      </InputAdornment>
-                    ),
-                    endAdornment: (
-                      <InputAdornment position="end">
-                        <IconButton
-                          onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                          edge="end"
-                        >
-                          {showConfirmPassword ? <VisibilityOff /> : <Visibility />}
-                        </IconButton>
-                        {passwordsMatch && (
-                          <CheckCircle sx={{ color: 'success.main', ml: 1 }} />
-                        )}
-                      </InputAdornment>
-                    ),
-                  }}
-                />
-
-                <Button
-                  type="submit"
-                  fullWidth
-                  variant="contained"
-                  size="large"
-                  sx={{ mt: 3, mb: 2, py: 1.5 }}
-                  disabled={
-                    loading || 
-                    !!success ||
-                    !formData.newPassword || 
-                    !passwordsMatch ||
-                    formData.newPassword.length < 6
-                  }
                 >
-                  {loading ? (
-                    <>
-                      <CircularProgress size={20} sx={{ mr: 1 }} />
-                      Đang đặt lại...
-                    </>
-                  ) : success ? (
-                    'Đã đặt lại thành công'
-                  ) : (
-                    'Đặt lại mật khẩu'
+                  {error}
+                </Alert>
+              )}
+              
+              {success && (
+                <Alert 
+                  severity="success" 
+                  icon={<CheckCircleOutline />}
+                  sx={{ 
+                    mb: 3,
+                    borderRadius: 2,
+                    background: alpha(theme.palette.success.main, 0.1),
+                    border: `1px solid ${alpha(theme.palette.success.main, 0.2)}`
+                  }}
+                >
+                  {success}
+                </Alert>
+              )}
+
+              {/* Form */}
+              <Box component="form" onSubmit={handleSubmit}>
+                <Stack spacing={3}>
+                  <TextField
+                    fullWidth
+                    label="Mật khẩu mới"
+                    type={showPassword ? 'text' : 'password'}
+                    value={formData.newPassword}
+                    onChange={handleChange('newPassword')}
+                    required
+                    disabled={loading}
+                    error={!!validationErrors.newPassword} // ✅ Error state
+                    helperText={validationErrors.newPassword} // ✅ Error message
+                    sx={{
+                      '& .MuiOutlinedInput-root': {
+                        borderRadius: 2,
+                        '&:hover fieldset': {
+                          borderColor: theme.palette.primary.main
+                        },
+                        '&.Mui-focused fieldset': {
+                          borderColor: theme.palette.primary.main
+                        }
+                      },
+                      '& .MuiInputLabel-root.Mui-focused': {
+                        color: theme.palette.primary.main
+                      }
+                    }}
+                    InputProps={{
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <Lock sx={{ color: theme.palette.primary.main }} />
+                        </InputAdornment>
+                      ),
+                      endAdornment: (
+                        <InputAdornment position="end">
+                          <IconButton 
+                            onClick={() => setShowPassword(!showPassword)} 
+                            edge="end"
+                            disabled={loading}
+                            sx={{ color: theme.palette.primary.main }}
+                          >
+                            {showPassword ? <VisibilityOff /> : <Visibility />}
+                          </IconButton>
+                        </InputAdornment>
+                      )
+                    }}
+                  />
+
+                  {/* ✅ Password Strength Indicator */}
+                  {formData.newPassword && (
+                    <Box sx={{ mt: -2, mb: 1 }}>
+                      {/* Strength Bar */}
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                        <Typography variant="body2" color="text.secondary" sx={{ minWidth: 'fit-content' }}>
+                          Độ mạnh:
+                        </Typography>
+                        <Box sx={{ flex: 1, display: 'flex', gap: 0.5 }}>
+                          {[1, 2, 3, 4, 5].map((level) => (
+                            <Box
+                              key={level}
+                              sx={{
+                                flex: 1,
+                                height: 4,
+                                borderRadius: 1,
+                                bgcolor: passwordStrength.score >= level 
+                                  ? strengthColor[passwordStrength.level]
+                                  : alpha(theme.palette.grey[300], 0.5),
+                                transition: 'all 0.3s ease'
+                              }}
+                            />
+                          ))}
+                        </Box>
+                        <Typography 
+                          variant="body2" 
+                          sx={{ 
+                            color: strengthColor[passwordStrength.level],
+                            fontWeight: 600,
+                            minWidth: 'fit-content'
+                          }}
+                        >
+                          {strengthText[passwordStrength.level]}
+                        </Typography>
+                      </Box>
+
+                      {/* Checklist */}
+                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                        {Object.entries({
+                          length: 'Ít nhất 8 ký tự',
+                          uppercase: 'Chữ hoa',
+                          lowercase: 'Chữ thường', 
+                          number: 'Số',
+                          special: 'Ký tự đặc biệt'
+                        }).map(([key, label]) => (
+                          <Box 
+                            key={key}
+                            sx={{ 
+                              display: 'flex', 
+                              alignItems: 'center', 
+                              gap: 0.5,
+                              fontSize: '0.75rem'
+                            }}
+                          >
+                            <Box
+                              sx={{
+                                width: 8,
+                                height: 8,
+                                borderRadius: '50%',
+                                bgcolor: passwordStrength.checks[key as keyof typeof passwordStrength.checks]
+                                  ? theme.palette.success.main
+                                  : alpha(theme.palette.grey[400], 0.5),
+                                transition: 'all 0.2s ease'
+                              }}
+                            />
+                            <Typography 
+                              variant="caption" 
+                              sx={{ 
+                                color: passwordStrength.checks[key as keyof typeof passwordStrength.checks]
+                                  ? theme.palette.success.main
+                                  : theme.palette.text.secondary
+                              }}
+                            >
+                              {label}
+                            </Typography>
+                          </Box>
+                        ))}
+                      </Box>
+                    </Box>
                   )}
-                </Button>
+
+                  <TextField
+                    fullWidth
+                    label="Xác nhận mật khẩu mới"
+                    type={showConfirm ? 'text' : 'password'}
+                    value={formData.confirmPassword}
+                    onChange={handleChange('confirmPassword')}
+                    required
+                    disabled={loading}
+                    error={!!validationErrors.confirmPassword} // ✅ Error state
+                    helperText={validationErrors.confirmPassword} // ✅ Error message
+                    sx={{
+                      '& .MuiOutlinedInput-root': {
+                        borderRadius: 2,
+                        '&:hover fieldset': {
+                          borderColor: theme.palette.primary.main
+                        },
+                        '&.Mui-focused fieldset': {
+                          borderColor: theme.palette.primary.main
+                        }
+                      },
+                      '& .MuiInputLabel-root.Mui-focused': {
+                        color: theme.palette.primary.main
+                      }
+                    }}
+                    InputProps={{
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <Lock sx={{ color: theme.palette.primary.main }} />
+                        </InputAdornment>
+                      ),
+                      endAdornment: (
+                        <InputAdornment position="end">
+                          <IconButton 
+                            onClick={() => setShowConfirm(!showConfirm)} 
+                            edge="end"
+                            disabled={loading}
+                            sx={{ color: theme.palette.primary.main }}
+                          >
+                            {showConfirm ? <VisibilityOff /> : <Visibility />}
+                          </IconButton>
+                        </InputAdornment>
+                      )
+                    }}
+                  />
+
+                  <Button
+                    type="submit"
+                    variant="contained"
+                    fullWidth
+                    disabled={loading || hasValidationErrors} // ✅ Disable nếu có validation error
+                    startIcon={loading ? <CircularProgress size={20} sx={{ color: 'white' }} /> : <VpnKey />}
+                    sx={{
+                      py: 1.5,
+                      borderRadius: 2,
+                      fontSize: '1.1rem',
+                      fontWeight: 600,
+                      background: `linear-gradient(45deg, ${theme.palette.primary.main}, ${theme.palette.primary.dark})`,
+                      '&:hover': {
+                        background: `linear-gradient(45deg, ${theme.palette.primary.dark}, ${theme.palette.primary.main})`,
+                        transform: loading ? 'none' : 'translateY(-2px)',
+                        boxShadow: loading ? 'none' : `0 8px 25px ${alpha(theme.palette.primary.main, 0.4)}`
+                      },
+                      '&:disabled': {
+                        background: alpha(theme.palette.primary.main, 0.6)
+                      },
+                      transition: 'all 0.3s ease'
+                    }}
+                  >
+                    {loading ? 'Đang xử lý...' : 'Xác nhận đặt lại'}
+                  </Button>
+                </Stack>
               </Box>
 
-              {/* Security Tips */}
-              <Box sx={{ mt: 3, p: 2, bgcolor: 'grey.50', borderRadius: 1 }}>
-                <Typography variant="body2" color="text.secondary">
-                  <strong>Mẹo bảo mật:</strong>
-                  <br />
-                  • Sử dụng mật khẩu dài ít nhất 8 ký tự
-                  <br />
-                  • Kết hợp chữ hoa, chữ thường, số và ký tự đặc biệt
-                  <br />
-                  • Không sử dụng thông tin cá nhân dễ đoán
+              {/* Password Requirements - Updated */}
+              <Box 
+                sx={{ 
+                  mt: 4, 
+                  p: 3, 
+                  background: alpha(theme.palette.info.main, 0.05),
+                  borderRadius: 2,
+                  border: `1px solid ${alpha(theme.palette.info.main, 0.1)}`
+                }}
+              >
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 2, fontWeight: 600 }}>
+                  🔒 Để có mật khẩu mạnh, hãy bao gồm:
+                </Typography>
+                <Typography variant="body2" color="text.secondary" component="div">
+                  • Ít nhất 8 ký tự (không quá 50 ký tự)<br/>
+                  • Chữ hoa và chữ thường<br/>
+                  • Ít nhất 1 số<br/>
+                  • Ký tự đặc biệt (!@#$%^&*...)<br/>
+                  • Không được chứa khoảng trắng
                 </Typography>
               </Box>
             </CardContent>
           </Card>
-
-          {/* Footer */}
-          <Box sx={{ mt: 3, textAlign: 'center' }}>
-            <Typography variant="body2" color="text.secondary">
-              Gặp vấn đề?{' '}
-              <Button
-                variant="text"
-                onClick={handleForgotPassword}
-                size="small"
-                sx={{ textTransform: 'none' }}
-              >
-                Gửi lại liên kết đặt lại
-              </Button>
-            </Typography>
-          </Box>
-        </Paper>
-      </Box>
-    </Container>
+        </Fade>
+      </Container>
+    </Box>
   );
 };
 
