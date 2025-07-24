@@ -112,7 +112,7 @@ const AuthPage: React.FC = () => {
     setLoading(true);
 
     try {
-      const response = await fetch(`${ENV.apiUrl}/auth/login`, {
+      const response = await fetch(`${ENV.apiUrl}/api/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(loginData),
@@ -145,7 +145,7 @@ const AuthPage: React.FC = () => {
     }
 
     try {
-      const response = await fetch(`${ENV.apiUrl}/auth/register`, {
+      const response = await fetch(`${ENV.apiUrl}/api/auth/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(registerData),
@@ -256,7 +256,7 @@ const AuthPage: React.FC = () => {
               </Button>
 
               <Box textAlign="center">
-                <Button variant="text" onClick={() => router.push('/auth/forgot-password')}>
+                <Button variant="text" onClick={() => router.push('/api/auth/forgot-password')}>
                   Quên mật khẩu?
                 </Button>
               </Box>
