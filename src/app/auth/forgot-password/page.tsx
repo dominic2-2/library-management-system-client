@@ -29,6 +29,7 @@ import {
 import { useRouter } from 'next/navigation';
 import { AuthService } from '@/services/auth.service';
 import { ForgotPasswordData } from '@/features/auth/auth.types';
+import { validateUsernameOrEmail } from '@/utils/validation';
 
 const ForgotPasswordPage: React.FC = () => {
   const [formData, setFormData] = useState<ForgotPasswordData>({
@@ -37,19 +38,30 @@ const ForgotPasswordPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [validationError, setValidationError] = useState('');
   const router = useRouter();
   const theme = useTheme();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData({ usernameorEmail: e.target.value });
+    const value = e.target.value;
+    setFormData({ usernameorEmail: value });
     setError('');
     setSuccess('');
+
+    if(value.trim()) {
+      const validationResult = validateUsernameOrEmail(value);
+      setValidationError(validationResult || '');
+    }else {
+      setValidationError('');
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.usernameorEmail.trim()) {
-      setError('Vui lòng nhập tên đăng nhập hoặc email');
+
+    const validationResult = validateUsernameOrEmail(formData.usernameorEmail);
+    if (validationResult) {
+      setValidationError(validationResult);
       return;
     }
 
@@ -191,6 +203,8 @@ const ForgotPasswordPage: React.FC = () => {
                   value={formData.usernameorEmail}
                   onChange={handleChange}
                   disabled={loading}
+                  error={!!validationError}
+                  helperText={validationError}
                   sx={{
                     mb: 3,
                     '& .MuiOutlinedInput-root': {
@@ -220,7 +234,7 @@ const ForgotPasswordPage: React.FC = () => {
                     type="submit"
                     variant="contained"
                     fullWidth
-                    disabled={loading}
+                    disabled={loading || !!validationError}
                     startIcon={loading ? <CircularProgress size={20} sx={{ color: 'white' }} /> : <Send />}
                     sx={{
                       py: 1.5,

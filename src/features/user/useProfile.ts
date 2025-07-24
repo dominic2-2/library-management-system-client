@@ -1,12 +1,14 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { ProfileData, ProfileErrors, AlertState } from './user.types';
+import { ProfileData, ProfileErrors } from './user.types';
 import { ENV } from '@/config/env';
 import { useAuth } from '@/providers/AuthProvider';
+import { validateFullName, validatePhone, validateAddress } from '@/utils/validation';
+import toast from 'react-hot-toast'; // ✅ Import toast
 
 export function useProfile() {
-  const { token, isAuthenticated, logout, loading: authLoading } = useAuth(); // ✅ Thêm authLoading
+  const { token, isAuthenticated, logout, loading: authLoading } = useAuth();
 
   const [formData, setFormData] = useState<ProfileData>({
     fullName: '',
@@ -20,7 +22,6 @@ export function useProfile() {
   const [loading, setLoading] = useState(false);
   const [loadingProfile, setLoadingProfile] = useState(true);
   const [errors, setErrors] = useState<ProfileErrors>({});
-  const [alert, setAlert] = useState<AlertState | null>(null);
 
   const hasChanges = JSON.stringify(formData) !== JSON.stringify(originalData);
 
@@ -29,14 +30,23 @@ export function useProfile() {
     if (!isAuthenticated || !token) {
       console.log('👤 Not authenticated, skipping profile fetch');
       setLoadingProfile(false);
-      if (!authLoading) { // Chỉ hiện error khi auth đã load xong
-        setAlert({ show: true, type: 'error', message: 'Vui lòng đăng nhập để tiếp tục' });
+      if (!authLoading) {
+        // ✅ Toast thay vì alert
+        toast.error('Vui lòng đăng nhập để tiếp tục', {
+          icon: '🔒',
+          duration: 4000,
+        });
       }
       return;
     }
 
     console.log('📡 Fetching user profile...');
     setLoadingProfile(true);
+
+    // ✅ Loading toast
+    const loadingToast = toast.loading('Đang tải thông tin người dùng...', {
+      icon: '📄',
+    });
 
     try {
       const response = await fetch(`${ENV.apiUrl}/user/profile`, {
@@ -48,6 +58,11 @@ export function useProfile() {
 
       if (response.status === 401) {
         console.error('🔒 Unauthorized, logging out');
+        toast.dismiss(loadingToast);
+        toast.error('Phiên đăng nhập đã hết hạn', {
+          icon: '⏰',
+          duration: 4000,
+        });
         logout();
         return;
       }
@@ -57,43 +72,90 @@ export function useProfile() {
         console.log('✅ Profile loaded successfully');
         setFormData(data);
         setOriginalData(data);
-        setAlert(null); // Clear any previous errors
+        
+        // ✅ Success toast
+        toast.dismiss(loadingToast);
+        toast.success('Tải thông tin thành công', {
+          icon: '✅',
+          duration: 2000,
+        });
       } else {
         const err = await response.json().catch(() => ({}));
         throw new Error(err.message || 'Không thể tải dữ liệu người dùng');
       }
     } catch (error: any) {
       console.error('❌ Profile fetch failed:', error);
-      setAlert({ 
-        show: true, 
-        type: 'error', 
-        message: error.message || 'Lỗi khi tải thông tin người dùng' 
+      toast.dismiss(loadingToast);
+      
+      // ✅ Error toast
+      toast.error(error.message || 'Lỗi khi tải thông tin người dùng', {
+        icon: '❌',
+        duration: 5000,
       });
     } finally {
       setLoadingProfile(false);
     }
   };
 
+  // ✅ Enhanced validation using utils functions
   const validate = (): boolean => {
     const newErrors: ProfileErrors = {};
-    if (!formData.fullName.trim()) newErrors.fullName = 'Họ tên không được để trống';
-    if (!formData.phone.trim()) newErrors.phone = 'Số điện thoại không được để trống';
-    else if (!/^[0-9+\-\s()]+$/.test(formData.phone)) newErrors.phone = 'Số điện thoại không hợp lệ';
-    if (!formData.address.trim()) newErrors.address = 'Địa chỉ không được để trống';
+    
+    // Validate full name
+    const fullNameError = validateFullName(formData.fullName);
+    if (fullNameError) newErrors.fullName = fullNameError;
+    
+    // Validate phone
+    const phoneError = validatePhone(formData.phone);
+    if (phoneError) newErrors.phone = phoneError;
+    
+    // Validate address
+    const addressError = validateAddress(formData.address);
+    if (addressError) newErrors.address = addressError;
+    
     setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    const isValid = Object.keys(newErrors).length === 0;
+    
+    if (!isValid) {
+      console.log('❌ Validation failed:', newErrors);
+      // ✅ Validation error toast
+      toast.error('Vui lòng kiểm tra lại thông tin đã nhập', {
+        icon: '⚠️',
+        duration: 3000,
+      });
+    }
+    
+    return isValid;
   };
 
+  // ✅ Enhanced handleChange with phone normalization and real-time validation
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-    setErrors(prev => ({ ...prev, [name]: '' }));
+    
+    let processedValue = value;
+    // ✅ Normalize phone input - remove spaces and dashes
+    if (name === 'phone') {
+      processedValue = value.replace(/\s|-/g, '');
+    }
+    
+    setFormData(prev => ({ ...prev, [name]: processedValue }));
+    
+    // ✅ Real-time validation - clear error when user starts typing
+    if (errors[name as keyof ProfileErrors]) {
+      setErrors(prev => ({ ...prev, [name]: '' }));
+    }
   };
 
   const handleSubmit = async () => {
     if (!token || !validate()) return;
 
     setLoading(true);
+    
+    // ✅ Loading toast for submit
+    const loadingToast = toast.loading('Đang cập nhật thông tin...', {
+      icon: '💾',
+    });
+
     try {
       const response = await fetch(`${ENV.apiUrl}/user/profile`, {
         method: 'PUT',
@@ -105,22 +167,47 @@ export function useProfile() {
       });
 
       if (response.status === 401) {
+        toast.dismiss(loadingToast);
+        toast.error('Phiên đăng nhập đã hết hạn', {
+          icon: '⏰',
+          duration: 4000,
+        });
         logout();
         return;
       }
 
       if (response.ok) {
         setOriginalData(formData);
-        setAlert({ show: true, type: 'success', message: 'Cập nhật thành công' });
+        toast.dismiss(loadingToast);
+        
+        // ✅ Success toast với animation
+        toast.success('Cập nhật thông tin thành công!', {
+          icon: '🎉',
+          duration: 3000,
+          style: {
+            background: 'linear-gradient(135deg, #10B981, #059669)',
+          },
+        });
+        
+        console.log('✅ Profile updated successfully');
       } else {
         const err = await response.json().catch(() => ({}));
-        throw new Error(err.message || 'Cập nhật thất bại');
+        toast.dismiss(loadingToast);
+        
+        // ✅ Server error toast
+        toast.error(err.message || 'Cập nhật thất bại', {
+          icon: '❌',
+          duration: 4000,
+        });
       }
     } catch (error: any) {
-      setAlert({ 
-        show: true, 
-        type: 'error', 
-        message: error.message || 'Có lỗi xảy ra khi cập nhật' 
+      console.error('❌ Profile update failed:', error);
+      toast.dismiss(loadingToast);
+      
+      // ✅ Network error toast
+      toast.error(error.message || 'Có lỗi xảy ra khi cập nhật thông tin', {
+        icon: '🚨',
+        duration: 5000,
       });
     } finally {
       setLoading(false);
@@ -130,7 +217,12 @@ export function useProfile() {
   const handleReset = () => {
     setFormData(originalData);
     setErrors({});
-    setAlert(null);
+    
+    // ✅ Reset confirmation toast
+    toast.success('Đã khôi phục thông tin ban đầu', {
+      icon: '↩️',
+      duration: 2000,
+    });
   };
 
   // ✅ FIX: useEffect phụ thuộc vào auth state
@@ -150,18 +242,16 @@ export function useProfile() {
         setLoadingProfile(false);
       }
     }
-  }, [authLoading, isAuthenticated, token]); // ✅ Dependencies đầy đủ
+  }, [authLoading, isAuthenticated, token]);
 
   return {
     formData,
     errors,
-    alert,
     loading,
-    loadingProfile: loadingProfile || authLoading, // ✅ Loading khi auth chưa sẵn sàng
+    loadingProfile: loadingProfile || authLoading,
     hasChanges,
     handleChange,
     handleSubmit,
     handleReset,
-    setAlert
   };
 }

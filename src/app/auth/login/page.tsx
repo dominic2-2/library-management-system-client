@@ -42,6 +42,7 @@ import { useRouter } from 'next/navigation';
 import { AuthService } from '@/services/auth.service';
 import { LoginData, RegisterData } from '@/features/auth/auth.types';
 import { useAuth } from '@/providers/AuthProvider';
+import { validateEmail, validatePassword, validateUsername, validatePhone, validateFullName, validateAddress } from '@/utils/validation';
 
 const AuthPage: React.FC = () => {
   const [tab, setTab] = useState(0);
@@ -65,9 +66,59 @@ const AuthPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  
+  // Validation error states - Updated to accept null
+  const [loginErrors, setLoginErrors] = useState<{usernameorEmail?: string | null; password?: string | null}>({});
+  const [registerErrors, setRegisterErrors] = useState<{
+    username?: string | null;
+    fullName?: string | null;
+    email?: string | null;
+    phone?: string | null;
+    address?: string | null;
+    password?: string | null;
+    confirmPassword?: string | null;
+  }>({});
   const { login } = useAuth();
   const router = useRouter();
   const theme = useTheme();
+
+  // ✅ Password strength checker for Register
+  type PasswordLevel = 'weak' | 'medium' | 'strong';
+  
+  const getPasswordStrength = (password: string) => {
+    let strength = 0;
+    const checks = {
+      length: password.length >= 8,
+      uppercase: /[A-Z]/.test(password),
+      lowercase: /[a-z]/.test(password),
+      number: /\d/.test(password),
+      special: /[!@#$%^&*(),.?":{}|<>]/.test(password)
+    };
+
+    strength = Object.values(checks).filter(Boolean).length;
+    
+    const level: PasswordLevel = strength <= 2 ? 'weak' : strength <= 4 ? 'medium' : 'strong';
+    
+    return {
+      score: strength,
+      checks,
+      level
+    };
+  };
+
+  const passwordStrength = getPasswordStrength(registerData.password);
+
+  const strengthColor: Record<PasswordLevel, string> = {
+    weak: theme.palette.error.main,
+    medium: theme.palette.warning.main,
+    strong: theme.palette.success.main
+  };
+
+  const strengthText: Record<PasswordLevel, string> = {
+    weak: 'Yếu',
+    medium: 'Trung bình', 
+    strong: 'Mạnh'
+  };
 
   useEffect(() => {
     setMounted(true);
@@ -79,11 +130,78 @@ const AuthPage: React.FC = () => {
     setTab(newValue);
     setError('');
     setSuccess('');
+    setLoginErrors({});
+    setRegisterErrors({});
+  };
+
+  // Validation functions
+  const validateLoginForm = (): boolean => {
+    const errors: {usernameorEmail?: string | null; password?: string | null} = {};
+    
+    // Check if it's email or username
+    const isEmail = loginData.usernameorEmail.includes('@');
+    
+    if (isEmail) {
+      const emailError = validateEmail(loginData.usernameorEmail);
+      if (emailError) errors.usernameorEmail = emailError;
+    } else {
+      const usernameError = validateUsername(loginData.usernameorEmail);
+      if (usernameError) errors.usernameorEmail = usernameError;
+    }
+    
+    const passwordError = validatePassword(loginData.password);
+    if (passwordError) errors.password = passwordError;
+    
+    setLoginErrors(errors);
+    return Object.values(errors).every(error => !error);
+  };
+
+  const validateRegisterForm = (): boolean => {
+    const errors: {
+      username?: string | null;
+      fullName?: string | null;
+      email?: string | null;
+      phone?: string | null;
+      address?: string | null;
+      password?: string | null;
+      confirmPassword?: string | null;
+    } = {};
+    
+    const usernameError = validateUsername(registerData.username);
+    if (usernameError) errors.username = usernameError;
+    
+    const fullNameError = validateFullName(registerData.fullName);
+    if (fullNameError) errors.fullName = fullNameError;
+    
+    const emailError = validateEmail(registerData.email);
+    if (emailError) errors.email = emailError;
+    
+    const phoneError = validatePhone(registerData.phone);
+    if (phoneError) errors.phone = phoneError;
+    
+    const addressError = validateAddress(registerData.address);
+    if (addressError) errors.address = addressError;
+    
+    const passwordError = validatePassword(registerData.password);
+    if (passwordError) errors.password = passwordError;
+    
+    if (registerData.password !== registerData.confirmPassword) {
+      errors.confirmPassword = 'Mật khẩu xác nhận không khớp';
+    }
+    
+    setRegisterErrors(errors);
+    return Object.values(errors).every(error => !error);
   };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    
+    // Client-side validation
+    if (!validateLoginForm()) {
+      return;
+    }
+    
     setLoading(true);
 
     try {
@@ -108,18 +226,18 @@ const AuthPage: React.FC = () => {
     }
   };
 
-  // ✅ UPDATED: Enhanced register with browser info
+  // ✅ UPDATED: Enhanced register with validation
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setSuccess('');
-    setLoading(true);
-
-    if (registerData.password !== registerData.confirmPassword) {
-      setError('Mật khẩu xác nhận không khớp');
-      setLoading(false);
+    
+    // Client-side validation
+    if (!validateRegisterForm()) {
       return;
     }
+    
+    setLoading(true);
 
     try {
       // ✅ AuthService now automatically collects browser info
@@ -128,6 +246,18 @@ const AuthPage: React.FC = () => {
       if (response.isSuccess) {
         setSuccess('Đăng ký thành công! Vui lòng đăng nhập');
         setTab(0);
+        
+        // Reset register form
+        setRegisterData({
+          username: '',
+          fullName: '',
+          email: '',
+          phone: '',
+          address: '',
+          password: '',
+          confirmPassword: ''
+        });
+        setRegisterErrors({});
         
         // ✅ Log successful registration
         console.log('✅ Registration completed successfully');
@@ -311,10 +441,18 @@ const AuthPage: React.FC = () => {
                           fullWidth
                           label="Tên đăng nhập hoặc Email"
                           value={loginData.usernameorEmail}
-                          onChange={e => setLoginData({ ...loginData, usernameorEmail: e.target.value })}
+                          onChange={e => {
+                            setLoginData({ ...loginData, usernameorEmail: e.target.value });
+                            // Clear error when user starts typing
+                            if (loginErrors.usernameorEmail) {
+                              setLoginErrors({ ...loginErrors, usernameorEmail: null });
+                            }
+                          }}
                           margin="normal"
                           required
                           disabled={loading}
+                          error={!!loginErrors.usernameorEmail}
+                          helperText={loginErrors.usernameorEmail}
                           sx={{
                             '& .MuiOutlinedInput-root': {
                               borderRadius: 2,
@@ -336,10 +474,18 @@ const AuthPage: React.FC = () => {
                           label="Mật khẩu"
                           type={showPassword ? 'text' : 'password'}
                           value={loginData.password}
-                          onChange={e => setLoginData({ ...loginData, password: e.target.value })}
+                          onChange={e => {
+                            setLoginData({ ...loginData, password: e.target.value });
+                            // Clear error when user starts typing
+                            if (loginErrors.password) {
+                              setLoginErrors({ ...loginErrors, password: null });
+                            }
+                          }}
                           margin="normal"
                           required
                           disabled={loading}
+                          error={!!loginErrors.password}
+                          helperText={loginErrors.password}
                           sx={{
                             '& .MuiOutlinedInput-root': {
                               borderRadius: 2,
@@ -460,9 +606,16 @@ const AuthPage: React.FC = () => {
                               fullWidth
                               label="Tên đăng nhập"
                               value={registerData.username}
-                              onChange={e => setRegisterData({ ...registerData, username: e.target.value })}
+                              onChange={e => {
+                                setRegisterData({ ...registerData, username: e.target.value });
+                                if (registerErrors.username) {
+                                  setRegisterErrors({ ...registerErrors, username: null });
+                                }
+                              }}
                               required
                               disabled={loading}
+                              error={!!registerErrors.username}
+                              helperText={registerErrors.username}
                               sx={{
                                 '& .MuiOutlinedInput-root': {
                                   borderRadius: 2
@@ -482,9 +635,16 @@ const AuthPage: React.FC = () => {
                               fullWidth
                               label="Họ và tên"
                               value={registerData.fullName}
-                              onChange={e => setRegisterData({ ...registerData, fullName: e.target.value })}
+                              onChange={e => {
+                                setRegisterData({ ...registerData, fullName: e.target.value });
+                                if (registerErrors.fullName) {
+                                  setRegisterErrors({ ...registerErrors, fullName: null });
+                                }
+                              }}
                               required
                               disabled={loading}
+                              error={!!registerErrors.fullName}
+                              helperText={registerErrors.fullName}
                               sx={{
                                 '& .MuiOutlinedInput-root': {
                                   borderRadius: 2
@@ -505,9 +665,16 @@ const AuthPage: React.FC = () => {
                               label="Email"
                               type="email"
                               value={registerData.email}
-                              onChange={e => setRegisterData({ ...registerData, email: e.target.value })}
+                              onChange={e => {
+                                setRegisterData({ ...registerData, email: e.target.value });
+                                if (registerErrors.email) {
+                                  setRegisterErrors({ ...registerErrors, email: null });
+                                }
+                              }}
                               required
                               disabled={loading}
+                              error={!!registerErrors.email}
+                              helperText={registerErrors.email}
                               sx={{
                                 '& .MuiOutlinedInput-root': {
                                   borderRadius: 2
@@ -527,9 +694,18 @@ const AuthPage: React.FC = () => {
                               fullWidth
                               label="Số điện thoại"
                               value={registerData.phone}
-                              onChange={e => setRegisterData({ ...registerData, phone: e.target.value })}
+                              onChange={e => {
+                                // ✅ NORMALIZE PHONE INPUT NGAY KHI NHẬP
+                                const normalizedPhone = e.target.value.replace(/\s|-/g, '');
+                                setRegisterData({ ...registerData, phone: normalizedPhone });
+                                if (registerErrors.phone) {
+                                  setRegisterErrors({ ...registerErrors, phone: null });
+                                }
+                              }}
                               required
                               disabled={loading}
+                              error={!!registerErrors.phone}
+                              helperText={registerErrors.phone}
                               sx={{
                                 '& .MuiOutlinedInput-root': {
                                   borderRadius: 2
@@ -549,9 +725,16 @@ const AuthPage: React.FC = () => {
                               fullWidth
                               label="Địa chỉ"
                               value={registerData.address}
-                              onChange={e => setRegisterData({ ...registerData, address: e.target.value })}
+                              onChange={e => {
+                                setRegisterData({ ...registerData, address: e.target.value });
+                                if (registerErrors.address) {
+                                  setRegisterErrors({ ...registerErrors, address: null });
+                                }
+                              }}
                               required
                               disabled={loading}
+                              error={!!registerErrors.address}
+                              helperText={registerErrors.address}
                               sx={{
                                 '& .MuiOutlinedInput-root': {
                                   borderRadius: 2
@@ -572,9 +755,16 @@ const AuthPage: React.FC = () => {
                               label="Mật khẩu"
                               type={showPassword ? 'text' : 'password'}
                               value={registerData.password}
-                              onChange={e => setRegisterData({ ...registerData, password: e.target.value })}
+                              onChange={e => {
+                                setRegisterData({ ...registerData, password: e.target.value });
+                                if (registerErrors.password) {
+                                  setRegisterErrors({ ...registerErrors, password: null });
+                                }
+                              }}
                               required
                               disabled={loading}
+                              error={!!registerErrors.password}
+                              helperText={registerErrors.password}
                               sx={{
                                 '& .MuiOutlinedInput-root': {
                                   borderRadius: 2
@@ -600,6 +790,88 @@ const AuthPage: React.FC = () => {
                                 )
                               }}
                             />
+                            
+                            {/* ✅ Password Strength Indicator cho Register */}
+                            {registerData.password && (
+                              <Box sx={{ mt: 1, mb: 1 }}>
+                                {/* Strength Bar */}
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                                  <Typography variant="caption" color="text.secondary" sx={{ minWidth: 'fit-content' }}>
+                                    Độ mạnh:
+                                  </Typography>
+                                  <Box sx={{ flex: 1, display: 'flex', gap: 0.5 }}>
+                                    {[1, 2, 3, 4, 5].map((level) => (
+                                      <Box
+                                        key={level}
+                                        sx={{
+                                          flex: 1,
+                                          height: 3,
+                                          borderRadius: 1,
+                                          bgcolor: passwordStrength.score >= level 
+                                            ? strengthColor[passwordStrength.level]
+                                            : alpha(theme.palette.grey[300], 0.5),
+                                          transition: 'all 0.3s ease'
+                                        }}
+                                      />
+                                    ))}
+                                  </Box>
+                                  <Typography 
+                                    variant="caption" 
+                                    sx={{ 
+                                      color: strengthColor[passwordStrength.level],
+                                      fontWeight: 600,
+                                      minWidth: 'fit-content'
+                                    }}
+                                  >
+                                    {strengthText[passwordStrength.level]}
+                                  </Typography>
+                                </Box>
+
+                                {/* Compact Checklist cho Register */}
+                                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                                  {Object.entries({
+                                    length: '8+ ký tự',
+                                    uppercase: 'Chữ hoa',
+                                    lowercase: 'Chữ thường',
+                                    number: 'Số',
+                                    special: 'Đặc biệt'
+                                  }).map(([key, label]) => (
+                                    <Box 
+                                      key={key}
+                                      sx={{ 
+                                        display: 'flex', 
+                                        alignItems: 'center', 
+                                        gap: 0.3,
+                                        fontSize: '0.75rem'
+                                      }}
+                                    >
+                                      <Box
+                                        sx={{
+                                          width: 6,
+                                          height: 6,
+                                          borderRadius: '50%',
+                                          bgcolor: passwordStrength.checks[key as keyof typeof passwordStrength.checks]
+                                            ? theme.palette.success.main
+                                            : alpha(theme.palette.grey[400], 0.5),
+                                          transition: 'all 0.2s ease'
+                                        }}
+                                      />
+                                      <Typography 
+                                        variant="caption" 
+                                        sx={{ 
+                                          color: passwordStrength.checks[key as keyof typeof passwordStrength.checks]
+                                            ? theme.palette.success.main
+                                            : theme.palette.text.secondary,
+                                          fontSize: '0.7rem'
+                                        }}
+                                      >
+                                        {label}
+                                      </Typography>
+                                    </Box>
+                                  ))}
+                                </Box>
+                              </Box>
+                            )}
                           </Grid>
                           <Grid item xs={12} sm={6}>
                             <TextField
@@ -607,9 +879,16 @@ const AuthPage: React.FC = () => {
                               label="Xác nhận mật khẩu"
                               type={showConfirmPassword ? 'text' : 'password'}
                               value={registerData.confirmPassword}
-                              onChange={e => setRegisterData({ ...registerData, confirmPassword: e.target.value })}
+                              onChange={e => {
+                                setRegisterData({ ...registerData, confirmPassword: e.target.value });
+                                if (registerErrors.confirmPassword) {
+                                  setRegisterErrors({ ...registerErrors, confirmPassword: null });
+                                }
+                              }}
                               required
                               disabled={loading}
+                              error={!!registerErrors.confirmPassword}
+                              helperText={registerErrors.confirmPassword}
                               sx={{
                                 '& .MuiOutlinedInput-root': {
                                   borderRadius: 2

@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { ChangePasswordErrors, ChangePasswordForm } from './user.types';
 import { useAuth } from '@/providers/AuthProvider';
 import { ENV } from '@/config/env';
+import toast from 'react-hot-toast';
 
 export function useChangePassword() {
   const { token } = useAuth();
@@ -16,13 +17,14 @@ export function useChangePassword() {
 
   const [errors, setErrors] = useState<ChangePasswordErrors>({});
   const [loading, setLoading] = useState(false);
-  const [alert, setAlert] = useState<{ type: 'error' | 'success'; message: string } | null>(null);
+  // const [alert, setAlert] = useState<{ type: 'error' | 'success'; message: string } | null>(null);
+
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
     setErrors(prev => ({ ...prev, [name]: '' }));
-    setAlert(null);
+    // setAlert(null);
   };
 
   const validate = (): boolean => {
@@ -39,6 +41,9 @@ export function useChangePassword() {
     if (!validate()) return;
 
     setLoading(true);
+
+     const loadingToast = toast.loading('Đang xử lý đổi mật khẩu...');
+
     try {
       const response = await fetch(`${ENV.apiUrl}/user/change-password`, {
         method: 'PUT',
@@ -55,9 +60,52 @@ export function useChangePassword() {
       }
 
       setFormData({ currentPassword: '', newPassword: '', confirmNewPassword: '' });
-      setAlert({ type: 'success', message: 'Đổi mật khẩu thành công!' });
+    //   setAlert({ type: 'success', message: 'Đổi mật khẩu thành công!' });
+    // } catch (err) {
+    //   setAlert({ type: 'error', message: err instanceof Error ? err.message : 'Đã xảy ra lỗi' });
+    // } finally {
+    //   setLoading(false);
+    // }
+      toast.dismiss(loadingToast);
+      toast.success('🎉 Đổi mật khẩu thành công!', {
+        duration: 4000,
+        style: {
+          background: 'linear-gradient(135deg, #10B981, #059669)',
+          color: '#fff',
+          fontWeight: '600',
+          fontSize: '15px',
+          padding: '16px 24px',
+          borderRadius: '12px',
+          boxShadow: '0 8px 32px rgba(16, 185, 129, 0.3)',
+        },
+        iconTheme: {
+          primary: '#fff',
+          secondary: '#10B981',
+        },
+      });
+      
     } catch (err) {
-      setAlert({ type: 'error', message: err instanceof Error ? err.message : 'Đã xảy ra lỗi' });
+      // ✅ Dismiss loading toast và hiển thị error toast
+      toast.dismiss(loadingToast);
+      
+      const errorMessage = err instanceof Error ? err.message : 'Đã xảy ra lỗi không xác định';
+      
+      toast.error(`❌ ${errorMessage}`, {
+        duration: 5000,
+        style: {
+          background: 'linear-gradient(135deg, #EF4444, #DC2626)',
+          color: '#fff',
+          fontWeight: '600',
+          fontSize: '15px',
+          padding: '16px 24px',
+          borderRadius: '12px',
+          boxShadow: '0 8px 32px rgba(239, 68, 68, 0.3)',
+        },
+        iconTheme: {
+          primary: '#fff',
+          secondary: '#EF4444',
+        },
+      });
     } finally {
       setLoading(false);
     }
@@ -67,7 +115,7 @@ export function useChangePassword() {
     formData,
     errors,
     loading,
-    alert,
+    // alert,
     handleChange,
     handleSubmit
   };

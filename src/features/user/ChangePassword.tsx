@@ -6,7 +6,6 @@ import {
   Card,
   CardContent,
   Typography,
-  Alert,
   TextField,
   InputAdornment,
   IconButton,
@@ -36,7 +35,7 @@ const ChangePassword: React.FC = () => {
     formData,
     errors,
     loading,
-    alert,
+    // alert,
     handleChange,
     handleSubmit
   } = useChangePassword();
@@ -130,25 +129,6 @@ const ChangePassword: React.FC = () => {
             </Typography>
           </Box>
         </Fade>
-
-        {/* Alert */}
-        {alert && (
-          <Fade in timeout={300}>
-            <Alert 
-              severity={alert.type} 
-              sx={{ 
-                mb: 3,
-                borderRadius: 3,
-                boxShadow: `0 4px 20px ${alpha(
-                  alert.type === 'success' ? theme.palette.success.main : theme.palette.error.main, 
-                  0.2
-                )}`
-              }}
-            >
-              {alert.message}
-            </Alert>
-          </Fade>
-        )}
 
         {/* Main Card */}
         <Fade in timeout={800}>

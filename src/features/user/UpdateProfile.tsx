@@ -38,14 +38,12 @@ const UpdateProfile = () => {
   const {
     formData,
     errors,
-    alert,
     loading,
     loadingProfile,
     hasChanges,
     handleChange,
     handleSubmit,
     handleReset,
-    setAlert
   } = useProfile();
 
   if (loadingProfile) {
@@ -119,26 +117,6 @@ const UpdateProfile = () => {
             </Box>
           </Box>
         </Fade>
-
-        {/* Alert */}
-        {alert?.show && (
-          <Fade in timeout={300}>
-            <Alert 
-              severity={alert.type} 
-              sx={{ 
-                mb: 3,
-                borderRadius: 3,
-                boxShadow: `0 4px 20px ${alpha(
-                  alert.type === 'success' ? theme.palette.success.main : theme.palette.error.main, 
-                  0.2
-                )}`
-              }} 
-              onClose={() => setAlert(null)}
-            >
-              {alert.message}
-            </Alert>
-          </Fade>
-        )}
 
         {/* Main Form Card */}
         <Fade in timeout={800}>
