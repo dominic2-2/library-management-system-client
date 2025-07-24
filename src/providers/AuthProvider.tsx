@@ -194,6 +194,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const remainingMinutes = diffMinutes % 60;
         return `${hours}h ${remainingMinutes}m`;
       }
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (e) {
       return 'Unknown duration';
     }
