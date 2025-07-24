@@ -5,8 +5,7 @@ import '@fontsource/roboto/700.css';
 
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import { AuthProvider } from '@/providers/AuthProvider';
-import ConditionalLayout from '@/components/layout/ConditionalLayout';
+import Providers from './providers'; // ✅ import Providers thay vì dùng AuthProvider trực tiếp
 import "./globals.css";
 
 const geistSans = Geist({
@@ -32,11 +31,9 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${geistSans.variable} ${geistMono.variable}`}>
       <body>
-        <AuthProvider>
-          <ConditionalLayout>
-            {children}
-          </ConditionalLayout>
-        </AuthProvider>
+        <Providers>
+          {children}
+        </Providers>
       </body>
     </html>
   );

@@ -31,8 +31,8 @@ export function useUserManagement() {
   const [pageSize, setPageSize] = useState(10);
   const [totalCount, setTotalCount] = useState(0);
   
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  // const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  // const [errorMessage, setErrorMessage] = useState<string | null>(null);
   
   // ✅ Đổi tên để rõ ràng hơn
   const [searchKeyword, setSearchKeyword] = useState<string>('');
