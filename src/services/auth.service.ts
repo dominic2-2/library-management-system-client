@@ -7,54 +7,36 @@ import {
   AuthResponse,
   ApiResponse,
   AnalyticsResponse,
-  LogoutResponse  // ✅ Import LogoutResponse type
+  LogoutResponse
 } from '@/features/auth/auth.types';
 import { getBrowserInfo } from '@/utils/browserDetection';
+import { apiClient } from './apiClient'; // ✅ Import apiClient
 
 export const AuthService = {
+  // ✅ Login with automatic browser fingerprint headers
   login: async (data: LoginData): Promise<AuthResponse> => {
     const loginPayload = {
       ...data,
       browserInfo: data.browserInfo || getBrowserInfo()
     };
+    
     console.log('🚀 Login with browser info:', loginPayload.browserInfo);
     
-    const response = await fetch(`${ENV.apiUrl}/auth/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(loginPayload)
-    });
+    // ✅ apiClient automatically adds browser fingerprint headers
+    const result = await apiClient.post<AuthResponse>('/auth/login', loginPayload);
     
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.message || 'Đăng nhập thất bại');
-    }
-    
-    const result = await response.json();
-    
-    // Log successful login with session info
     if (result.sessionInfo) {
       console.log('✅ Login successful. Session info:', result.sessionInfo);
     }
+    
     return result;
   },
 
-  // ✅ FIXED: Logout method with proper error typing
+  // ✅ Logout with automatic browser fingerprint headers
   logout: async (token: string): Promise<LogoutResponse> => {
     try {
-      const response = await fetch(`${ENV.apiUrl}/auth/logout`, {
-        method: 'POST',
-        headers: { 
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-      
-      const result = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(result.message || 'Logout failed');
-      }
+      // ✅ apiClient automatically adds browser fingerprint headers
+      const result = await apiClient.post<LogoutResponse>('/auth/logout', {}, token);
       
       console.log('✅ Server logout successful:', result);
       return result;
@@ -65,64 +47,43 @@ export const AuthService = {
     }
   },
 
+  // ✅ Register with automatic browser fingerprint headers
   register: async (data: RegisterData): Promise<ApiResponse> => {
     const registerPayload = {
       ...data,
       browserInfo: data.browserInfo || getBrowserInfo()
     };
     
-    const response = await fetch(`${ENV.apiUrl}/auth/register`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(registerPayload)
-    });
-    
-    const result = await response.json();
+    // ✅ apiClient automatically adds browser fingerprint headers
+    const result = await apiClient.post<ApiResponse>('/auth/register', registerPayload);
     
     if (result.isSuccess) {
       console.log('✅ Registration successful');
     }
+    
     return result;
   },
 
+  // ✅ Forgot password
   forgotPassword: async (data: ForgotPasswordData): Promise<ApiResponse> => {
-    const response = await fetch(`${ENV.apiUrl}/auth/forgot-password`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data)
-    });
-    return await response.json();
+    return apiClient.post<ApiResponse>('/auth/forgot-password', data);
   },
 
+  // ✅ Reset password
   resetPassword: async (data: ResetPasswordData): Promise<ApiResponse> => {
-    const response = await fetch(`${ENV.apiUrl}/auth/reset-password`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        token: data.token,
-        newPassword: data.newPassword
-      })
+    return apiClient.post<ApiResponse>('/auth/reset-password', {
+      token: data.token,
+      newPassword: data.newPassword
     });
-    return await response.json();
   },
 
+  // ✅ Get analytics with automatic browser fingerprint headers
   getAnalytics: async (token: string): Promise<AnalyticsResponse> => {
-    const response = await fetch(`${ENV.apiUrl}/auth/analytics`, {
-      method: 'GET',
-      headers: { 
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      }
-    });
-    
-    if (!response.ok) {
-      throw new Error('Failed to fetch analytics data');
-    }
-    
-    return await response.json();
+    // ✅ This will automatically include browser headers for middleware validation
+    return apiClient.get<AnalyticsResponse>('/auth/analytics', token);
   },
 
-  // ✅ Method: Manual browser info collection (for testing)
+  // ✅ Manual browser info collection (for testing)
   collectBrowserInfo: () => {
     return getBrowserInfo();
   }
