@@ -8,13 +8,13 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, PieChart, Pie, Cell, LineChart, Line, AreaChart, Area, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, ComposedChart, ResponsiveContainer
 } from 'recharts';
 
-const STATUS_LABELS: Record<string, string> = {
-  Pending: 'Chờ xử lý',
-  Available: 'Có thể nhận',
-  Collected: 'Đã nhận',
-  Canceled: 'Đã hủy',
-  Expired: 'Hết hạn',
-};
+// const STATUS_LABELS: Record<string, string> = {
+//   Pending: 'Chờ xử lý',
+//   Available: 'Có thể nhận',
+//   Collected: 'Đã nhận',
+//   Canceled: 'Đã hủy',
+//   Expired: 'Hết hạn',
+// };
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#B71C1C'];
 
@@ -37,7 +37,7 @@ const StaffHomePage = () => {
         });
         const statArr = Object.entries(statusCount).map(([status, count]) => ({
           status,
-          label: STATUS_LABELS[status] || status,
+          label: status,
           count,
         }));
         setStats(statArr);
