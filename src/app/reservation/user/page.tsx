@@ -122,7 +122,7 @@ export default function MyReservationsPage() {
           textAlign: { xs: 'center', sm: 'left' },
         }}
       >
-        Đặt trước của tôi
+        Danh sách đơn đặt trước
       </Typography>
       <Box sx={{ mb: 4 }}>
         <TextField

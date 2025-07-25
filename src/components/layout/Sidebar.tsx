@@ -32,7 +32,7 @@ const Sidebar: React.FC<SidebarProps> = ({ open, onClose, userRole }) => {
   } else if (userRole === 'User' || userRole === '3') {
     menuItems = [
       { label: 'Home', icon: <HomeIcon />, href: '/user/home' },
-      { label: 'Đặt sách', icon: <BookIcon />, href: '/reservation/user/create' },
+      { label: 'Sách đã mượn', icon: <BookIcon />, href: '/loan/history' },
       { label: 'Lịch sử đặt sách', icon: <HistoryIcon />, href: '/reservation/user' },
     ];
   }
