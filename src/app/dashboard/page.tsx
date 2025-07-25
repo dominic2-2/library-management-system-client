@@ -25,12 +25,12 @@ export default function DashboardIndex() {
     // Redirect theo role
     const roleRoutes: Record<string, string> = {
       'Admin': '/admin/user-management',
-      'Staff': '/dashboard/staff', 
-      'User': '/profile'
+      'Staff': '/dashboard/staff',
+      'User': '/user/home',
     };
 
     const targetRoute = roleRoutes[user.role] || '/profile';
-    
+
     console.log(`🚀 Redirecting ${user.role} to: ${targetRoute}`);
     router.replace(targetRoute);
 
