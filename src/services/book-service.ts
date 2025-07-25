@@ -524,6 +524,8 @@ export const testApiConnection = async (): Promise<boolean> => {
     return response.ok;
   } catch (error) {
     console.error("API connection test failed:", error);
+    console.log("ENV.apiUrl = ", ENV.apiUrl);
+
     return false;
   }
 };
