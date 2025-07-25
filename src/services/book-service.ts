@@ -1,4 +1,4 @@
-import { BookWithDetails } from "@/types/book";
+import { BookWithDetails, BookCreateRequestWithFile, BookDetailApiResponse } from "@/types/book";
 import { ENV } from "@/config/env";
 
 // Types for the API response structure
@@ -81,8 +81,6 @@ const apiRequest = async <T>(
   url: string,
   options: RequestInit = {}
 ): Promise<T> => {
-  console.log(`Making API request to: ${url}`);
-
   const response = await fetch(url, {
     headers: {
       "Content-Type": "application/json",
@@ -92,16 +90,12 @@ const apiRequest = async <T>(
     ...options,
   });
 
-  console.log(`Response status: ${response.status}`);
-
   if (!response.ok) {
     const errorText = await response.text();
-    console.error(`API Error: ${response.status} - ${errorText}`);
     throw new Error(`HTTP error! status: ${response.status} - ${errorText}`);
   }
 
-  const data = await response.json();
-  console.log(`Response data structure:`, data);
+  const data = await response.json();   
   return data;
 };
 
@@ -152,7 +146,6 @@ export const fetchBooks = async (
   });
 
   try {
-    console.log("Fetching books with query:", `${BOOKS_API_BASE}${query}`);
 
     const response = await apiRequest<ODataResponse<ApiBook> | ApiBookResponse>(
       `${BOOKS_API_BASE}${query}`
@@ -169,8 +162,7 @@ export const fetchBooks = async (
     } else {
       // Direct array (fallback)
       booksData = Array.isArray(response) ? response : [];
-    }
-    console.log(`Books data:`, booksData);
+    } 
 
     // Transform the data to match our expected structure
     const transformedBooks = booksData.map((book: ApiBook) => {
@@ -319,63 +311,51 @@ export const getBookById = async (
   }
 };
 
-// Create new book
-export const createBook = async (
-  book: Partial<BookWithDetails>
-): Promise<BookWithDetails> => {
-  try {
-    const createdBook = await apiRequest<BookWithDetails>(BOOKS_API_BASE, {
-      method: "POST",
-      body: JSON.stringify(book),
-    });
-    return createdBook;
-  } catch (error) {
-    console.error("Error creating book:", error);
-    throw new Error("Failed to create book");
-  }
-};
-
 // Create new book with image upload
 export const createBookWithImage = async (
-  bookData: {
-    title: string;
-    language: string;
-    bookStatus: string;
-    description: string;
-    categoryId: number;
-    authors: { authorName: string; bio?: string }[];
-  },
-  coverImage?: File
+  bookData: BookCreateRequestWithFile
 ): Promise<BookWithDetails> => {
   try {
     const formData = new FormData();
-
-    // Add book data as JSON string
-    formData.append("bookData", JSON.stringify(bookData));
-
-    // Add cover image if provided
-    if (coverImage) {
-      formData.append("coverImage", coverImage);
+    
+    formData.append("Title", bookData.title);
+    formData.append("Language", bookData.language);
+    formData.append("BookStatus", bookData.bookStatus);
+    formData.append("Description", bookData.description);
+    formData.append("CategoryId", bookData.categoryId.toString());
+    formData.append("AuthorIds", bookData.authorIds.join(","));
+    
+    if (bookData.coverImage) {
+      formData.append("CoverImage", bookData.coverImage);
     }
 
-    console.log("Creating book with image:", bookData, coverImage?.name);
-
-    const response = await fetch(`${BOOKS_API_BASE}/with-image`, {
+    // Add volumes data if provided
+    if (bookData.volumes && bookData.volumes.length > 0) {
+      bookData.volumes.forEach((volume, index) => {
+        if (volume.volumeId) {
+          formData.append(`Volumes[${index}].VolumeId`, volume.volumeId.toString());
+        }
+        formData.append(`Volumes[${index}].VolumeNumber`, volume.volumeNumber.toString());
+        if (volume.volumeTitle) {
+          formData.append(`Volumes[${index}].VolumeTitle`, volume.volumeTitle);
+        }
+        if (volume.description) {
+          formData.append(`Volumes[${index}].Description`, volume.description);
+        }
+      });
+    }
+    
+    const response = await fetch(`${BOOKS_API_BASE}`, {
       method: "POST",
       body: formData,
-      // Don't set Content-Type header, let browser set it with boundary for FormData
     });
-
-    console.log(`Create book response status: ${response.status}`);
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error(`Create book API Error: ${response.status} - ${errorText}`);
       throw new Error(`HTTP error! status: ${response.status} - ${errorText}`);
     }
 
     const createdBook = await response.json();
-    console.log("Book created successfully:", createdBook);
     return createdBook;
   } catch (error) {
     console.error("Error creating book with image:", error);
@@ -400,6 +380,83 @@ export const updateBook = async (
   } catch (error) {
     console.error("Error updating book:", error);
     throw new Error("Failed to update book");
+  }
+};
+
+// Update book with image upload
+export const updateBookWithImage = async (
+  bookId: number,
+  bookData: BookCreateRequestWithFile
+): Promise<BookWithDetails> => {
+  console.log("🚀 ~ updateBookWithImage ~ bookId:", bookId)
+  try {
+    const formData = new FormData();
+
+    formData.append("Title", bookData.title);
+    formData.append("Language", bookData.language);
+    formData.append("BookStatus", bookData.bookStatus);
+    formData.append("Description", bookData.description);
+    formData.append("CategoryId", bookData.categoryId.toString());
+    formData.append("AuthorIds", bookData.authorIds.join(","));
+
+    // Add cover image if provided
+    if (bookData.coverImage) {
+      formData.append("coverImage", bookData.coverImage);
+    }
+
+    // Add volumes data if provided
+    if (bookData.volumes && bookData.volumes.length > 0) {
+      bookData.volumes.forEach((volume, index) => {
+        if (volume.volumeId) {
+          formData.append(`Volumes[${index}].VolumeId`, volume.volumeId.toString());
+        }
+        formData.append(`Volumes[${index}].VolumeNumber`, volume.volumeNumber.toString());
+        if (volume.volumeTitle) {
+          formData.append(`Volumes[${index}].VolumeTitle`, volume.volumeTitle);
+        }
+        if (volume.description) {
+          formData.append(`Volumes[${index}].Description`, volume.description);
+        }
+      });
+    }
+
+    const response = await fetch(`${BOOKS_API_BASE}/${bookId}`, {
+      method: "PUT",
+      body: formData,
+      // Don't set Content-Type header, let browser set it with boundary for FormData
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`HTTP error! status: ${response.status} - ${errorText}`);
+    }
+
+    const updatedBook = await response.json();
+    return updatedBook;
+  } catch (error) {
+    console.error("Error updating book with image:", error);
+    throw new Error("Failed to update book with image");
+  }
+};
+
+// Delete book
+export const deleteBook = async (bookId: number): Promise<void> => {
+  try {
+    const response = await fetch(`${BOOKS_API_BASE}/${bookId}`, {
+      method: "DELETE",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`HTTP error! status: ${response.status} - ${errorText}`);
+    }
+
+  } catch (error) {
+    console.error("Error deleting book:", error);
+    throw new Error("Failed to delete book");
   }
 };
 
@@ -515,17 +572,39 @@ export const fetchBookStatuses = async (): Promise<string[]> => {
   }
 };
 
+// Get book details by ID for editing
+export const getBookDetails = async (
+  bookId: number
+): Promise<BookDetailApiResponse | null> => {
+  try {
+    const response = await fetch(`${ENV.apiUrl}/api/manage/Book/${bookId}`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`HTTP error! status: ${response.status} - ${errorText}`);
+    }
+
+    const bookDetails = await response.json();
+    return bookDetails;
+  } catch (error) {
+    console.error("Error fetching book details:", error);
+    return null;
+  }
+};
+
 // Test API connection
 export const testApiConnection = async (): Promise<boolean> => {
   try {
-    console.log(`Testing API connection to: ${ENV.apiUrl}`);
     const response = await fetch(`${ENV.apiUrl}/api/manage/Book?$top=1`);
-    console.log(`API test response status: ${response.status}`);
     return response.ok;
   } catch (error) {
     console.error("API connection test failed:", error);
-    console.log("ENV.apiUrl = ", ENV.apiUrl);
-
     return false;
   }
 };
