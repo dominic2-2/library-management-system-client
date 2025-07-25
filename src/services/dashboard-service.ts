@@ -15,13 +15,13 @@ export interface MonthlyLoan {
 }
 
 export const fetchDashboardSummary = async (): Promise<DashboardSummary> => {
-    const res = await fetch(`${ENV.apiUrl}/api/Dashboard/summary`);
+    const res = await fetch(`${ENV.apiUrl}/Dashboard/summary`);
     if (!res.ok) throw new Error("Failed to fetch summary");
     return await res.json();
 };
 
 export const fetchMonthlyLoans = async (): Promise<MonthlyLoan[]> => {
-    const res = await fetch(`${ENV.apiUrl}/api/Dashboard/monthly-loans`);
+    const res = await fetch(`${ENV.apiUrl}/Dashboard/monthly-loans`);
     if (!res.ok) throw new Error("Failed to fetch monthly loans");
     const data = await res.json();
     return data.$values || [];

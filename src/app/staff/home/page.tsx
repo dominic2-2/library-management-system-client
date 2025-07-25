@@ -12,7 +12,7 @@ import {
 //   Pending: 'Chờ xử lý',
 //   Available: 'Có thể nhận',
 //   Collected: 'Đã nhận',
-//   Canceled: 'Đã hủy',
+//   Cancelled: 'Đã hủy',
 //   Expired: 'Hết hạn',
 // };
 

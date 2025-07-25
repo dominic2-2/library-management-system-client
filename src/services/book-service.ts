@@ -74,7 +74,7 @@ const buildODataQuery = (params: {
 };
 
 // Base API URL for books
-const BOOKS_API_BASE = `${ENV.apiUrl}/api/manage/Book`;
+const BOOKS_API_BASE = `${ENV.apiUrl}/manage/Book`;
 
 // HTTP request helper
 const apiRequest = async <T>(
@@ -506,7 +506,7 @@ export const fetchBookCategories = async (): Promise<
 export const fetchBookStatuses = async (): Promise<string[]> => {
   try {
     const statuses = await apiRequest<string[]>(
-      `${ENV.apiUrl}/api/manage/Book/statuses`
+      `${ENV.apiUrl}/manage/Book/statuses`
     );
     return statuses;
   } catch (error) {
@@ -519,7 +519,7 @@ export const fetchBookStatuses = async (): Promise<string[]> => {
 export const testApiConnection = async (): Promise<boolean> => {
   try {
     console.log(`Testing API connection to: ${ENV.apiUrl}`);
-    const response = await fetch(`${ENV.apiUrl}/api/manage/Book?$top=1`);
+    const response = await fetch(`${ENV.apiUrl}/manage/Book?$top=1`);
     console.log(`API test response status: ${response.status}`);
     return response.ok;
   } catch (error) {

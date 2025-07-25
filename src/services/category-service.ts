@@ -31,7 +31,7 @@ export interface PaginationParams {
 
 export class CategoryService {
   private static buildUrl(endpoint: string): string {
-    return `${API_BASE_URL}/api/${endpoint}`;
+    return `${API_BASE_URL}/${endpoint}`;
   }
 
   private static transformApiResponse(apiData: ApiCategoryItem[]): Category[] {

@@ -11,7 +11,7 @@ const STATUS_OPTIONS = [
   { value: 'Pending', label: 'Chờ xử lý' },
   { value: 'Available', label: 'Có thể nhận' },
   { value: 'Collected', label: 'Đã nhận' },
-  { value: 'Canceled', label: 'Đã hủy' },
+  { value: 'Cancelled', label: 'Đã hủy' },
   { value: 'Expired', label: 'Hết hạn' },
 ];
 
@@ -19,7 +19,7 @@ const STATUS_LABELS: Record<string, string> = {
   Pending: 'Chờ xử lý',
   Available: 'Có thể nhận',
   Collected: 'Đã nhận',
-  Canceled: 'Đã hủy',
+  Cancelled: 'Đã hủy',
   Expired: 'Hết hạn',
 };
 
@@ -30,7 +30,7 @@ export default function StaffReservationListPage() {
   const [totalCount, setTotalCount] = useState(0);
   const [page, setPage] = useState(1);
   const [keyword, setKeyword] = useState('');
-  const [status, setStatus] = useState('');
+  const [status, setStatus] = useState('Pending');
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState<number | null>(null);
 

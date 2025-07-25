@@ -25,48 +25,53 @@ export default function StaffReservationEditPage() {
   const [processorName, setProcessorName] = useState('');
 
   useEffect(() => {
-    const fetchDetail = async () => {
+    const fetchProfileAndDetail = async () => {
       setLoading(true);
-      const token = localStorage.getItem('token');
-      const res = await fetch(`${ENV.apiUrl}/reservations/${id}`, {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-      });
-      if (res.ok) {
-        const data = await res.json();
-        const r = data && typeof data === 'object' ? data : (Array.isArray(data) ? data[0] : null);
-        setReservation(r);
-        setStatus(r?.reservationStatus || 'Pending');
-        setExpirationDate(r?.expirationDate ? r.expirationDate.split('T')[0] : '');
-        setProcessedBy(userId ?? r?.processedBy ?? '');
-      }
-      setLoading(false);
-    };
-    if (id) fetchDetail();
-  }, [id]);
 
-  useEffect(() => {
-    // Lấy userId từ profile
-    const fetchProfile = async () => {
+      const token = localStorage.getItem('token');
+      let currentUserId = null;
+      let fullName = '';
+
       try {
-        const token = localStorage.getItem('token');
-        const res = await fetch(`${ENV.apiUrl}/user/profile`, {
+        // Fetch profile
+        const profileRes = await fetch(`${ENV.apiUrl}/user/profile`, {
           headers: token ? { Authorization: `Bearer ${token}` } : {},
         });
+
+        if (profileRes.ok) {
+          const profileData = await profileRes.json();
+          currentUserId = profileData.userId;
+          fullName = profileData.fullName || '';
+          setUserId(currentUserId);
+          setProcessorName(fullName);
+        }
+      } catch (e) {
+        console.error('Failed to fetch profile', e);
+      }
+
+      try {
+        // Fetch reservation after profile
+        const res = await fetch(`${ENV.apiUrl}/reservations/${id}`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
+
         if (res.ok) {
           const data = await res.json();
-          setUserId(data.userId);
-          setProcessorName(data.fullName || '');
+          const r = typeof data === 'object' ? data : (Array.isArray(data) ? data[0] : null);
+          setReservation(r);
+          setStatus(r?.reservationStatus || 'Pending');
+          setExpirationDate(r?.expirationDate ? r.expirationDate.split('T')[0] : '');
+          setProcessedBy(currentUserId ?? r?.processedBy ?? '');
         }
-      } catch (e) {}
-    };
-    fetchProfile();
-  }, []);
+      } catch (e) {
+        console.error('Failed to fetch reservation', e);
+      }
 
-  useEffect(() => {
-    if (userId !== null) {
-      setProcessedBy(userId);
-    }
-  }, [userId]);
+      setLoading(false);
+    };
+
+    if (id) fetchProfileAndDetail();
+  }, [id]);
 
   const handleSave = async () => {
     setSaving(true);
