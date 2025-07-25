@@ -1,22 +1,22 @@
 import {
-  CoverType,
-  CoverTypeCreateRequest,
-  CoverTypeUpdateRequest,
-} from "@/types/CoverType";
+  Edition,
+  EditionCreateRequest,
+  EditionUpdateRequest,
+} from "@/types/edition";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5027";
 
 // API response interfaces
-interface ApiCoverTypeItem {
+interface ApiEditionItem {
   $id: string;
-  coverTypeId: number;
-  coverTypeName: string;
+  editionId: number;
+  editionName: string;
   bookCount: number;
 }
 
 // Pagination interfaces
-export interface PaginatedCoverTypesResponse {
-  data: CoverType[];
+export interface PaginatedEditionsResponse {
+  data: Edition[];
   totalCount: number;
   hasNextPage: boolean;
   currentPage: number;
@@ -29,28 +29,26 @@ export interface PaginationParams {
   searchName?: string;
 }
 
-export class CoverTypeService {
+export class EditionService {
   private static buildUrl(endpoint: string): string {
     return `${API_BASE_URL}/api/${endpoint}`;
   }
 
-  private static transformApiResponse(
-    apiData: ApiCoverTypeItem[]
-  ): CoverType[] {
+  private static transformApiResponse(apiData: ApiEditionItem[]): Edition[] {
     return apiData.map((item) => ({
-      coverTypeId: item.coverTypeId,
-      coverTypeName: item.coverTypeName,
+      editionId: item.editionId,
+      editionName: item.editionName,
       bookCount: item.bookCount,
     }));
   }
 
-  static async getCoverTypes(searchName?: string): Promise<CoverType[]> {
+  static async getEditions(searchName?: string): Promise<Edition[]> {
     try {
-      let url = this.buildUrl("CoverTypes");
+      let url = this.buildUrl("Editions");
 
       if (searchName && searchName.trim()) {
         const encodedSearchName = encodeURIComponent(searchName.trim());
-        url += `?$filter=contains(tolower(CoverTypeName), tolower('${encodedSearchName}'))`;
+        url += `?$filter=contains(tolower(EditionName), tolower('${encodedSearchName}'))`;
       }
 
       const response = await fetch(url, {
@@ -66,54 +64,54 @@ export class CoverTypeService {
 
       const rawData = await response.json();
 
-      // Nếu API trả về mảng trực tiếp (CoverType[])
+      // Nếu API trả về mảng trực tiếp (Edition[])
       if (!Array.isArray(rawData)) {
         throw new Error("Invalid API response: expected array");
       }
 
-      const transformedCoverTypes = this.transformApiResponse(rawData);
-      return transformedCoverTypes;
+      const transformedEditions = this.transformApiResponse(rawData);
+      return transformedEditions;
     } catch (error) {
-      console.error("Error fetching cover types:", error);
+      console.error("Error fetching editions:", error);
       throw error;
     }
   }
 
   /**
-   * Get paginated cover types with infinite scroll support
+   * Get paginated editions with infinite scroll support
    * Uses the existing API and simulates pagination client-side until backend supports it
    */
-  static async getCoverTypesPaginated(
+  static async getEditionsPaginated(
     params: PaginationParams = {}
-  ): Promise<PaginatedCoverTypesResponse> {
+  ): Promise<PaginatedEditionsResponse> {
     try {
       const { page = 0, pageSize = 10, searchName } = params;
 
-      // Get all cover types from existing API
-      const allCoverTypes = await this.getCoverTypes(searchName);
+      // Get all editions from existing API
+      const allEditions = await this.getEditions(searchName);
 
       // Simulate pagination client-side
       const startIndex = page * pageSize;
       const endIndex = startIndex + pageSize;
-      const paginatedData = allCoverTypes.slice(startIndex, endIndex);
+      const paginatedData = allEditions.slice(startIndex, endIndex);
 
       return {
         data: paginatedData,
-        totalCount: allCoverTypes.length,
-        hasNextPage: endIndex < allCoverTypes.length,
+        totalCount: allEditions.length,
+        hasNextPage: endIndex < allEditions.length,
         currentPage: page,
         pageSize,
       };
     } catch (error) {
-      console.error("Error fetching paginated cover types:", error);
+      console.error("Error fetching paginated editions:", error);
       throw error;
     }
   }
 
-  static async getCoverTypeById(id: number): Promise<CoverType> {
+  static async getEditionById(id: number): Promise<Edition> {
     try {
-      const url = this.buildUrl(`CoverTypes/${id}`);
-      console.log("Fetching cover type by ID:", url);
+      const url = this.buildUrl(`Editions/${id}`);
+      console.log("Fetching edition by ID:", url);
 
       const response = await fetch(url, {
         method: "GET",
@@ -126,28 +124,26 @@ export class CoverTypeService {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      const apiCoverType: ApiCoverTypeItem = await response.json();
+      const apiEdition: ApiEditionItem = await response.json();
 
-      // Transform single cover type response
-      const coverType: CoverType = {
-        coverTypeId: apiCoverType.coverTypeId,
-        coverTypeName: apiCoverType.coverTypeName,
-        bookCount: apiCoverType.bookCount,
+      // Transform single edition response
+      const edition: Edition = {
+        editionId: apiEdition.editionId,
+        editionName: apiEdition.editionName,
+        bookCount: apiEdition.bookCount,
       };
 
-      return coverType;
+      return edition;
     } catch (error) {
-      console.error("Error fetching cover type by ID:", error);
+      console.error("Error fetching edition by ID:", error);
       throw error;
     }
   }
 
-  static async createCoverType(
-    data: CoverTypeCreateRequest
-  ): Promise<CoverType> {
+  static async createEdition(data: EditionCreateRequest): Promise<Edition> {
     try {
-      const url = this.buildUrl("CoverTypes");
-      console.log("Creating cover type:", url, data);
+      const url = this.buildUrl("Editions");
+      console.log("Creating edition:", url, data);
 
       const response = await fetch(url, {
         method: "POST",
@@ -161,35 +157,33 @@ export class CoverTypeService {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      const apiCoverType: ApiCoverTypeItem = await response.json();
+      const apiEdition: ApiEditionItem = await response.json();
 
-      // Transform response to CoverType type
-      const coverType: CoverType = {
-        coverTypeId: apiCoverType.coverTypeId,
-        coverTypeName: apiCoverType.coverTypeName,
-        bookCount: apiCoverType.bookCount,
+      // Transform response to Edition type
+      const edition: Edition = {
+        editionId: apiEdition.editionId,
+        editionName: apiEdition.editionName,
+        bookCount: apiEdition.bookCount,
       };
 
-      return coverType;
+      return edition;
     } catch (error) {
-      console.error("Error creating cover type:", error);
+      console.error("Error creating edition:", error);
       throw error;
     }
   }
 
-  static async updateCoverType(data: CoverTypeUpdateRequest) {
+  static async updateEdition(data: EditionUpdateRequest) {
     try {
-      const url = this.buildUrl(`CoverTypes/${data.coverTypeId}`);
-      console.log("Updating cover type:", url, data);
+      const url = this.buildUrl(`Editions/${data.editionId}`);
+      console.log("Updating edition:", url, data.editionName);
 
       const response = await fetch(url, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          coverTypeName: data.coverTypeName,
-        }),
+        body: JSON.stringify({ editionName: data.editionName }),
       });
 
       if (response.status === 204) {
@@ -202,15 +196,15 @@ export class CoverTypeService {
         throw new Error(`Unexpected status: ${response.status}`);
       }
     } catch (error) {
-      console.error("Error updating cover type:", error);
+      console.error("Error updating edition:", error);
       throw error;
     }
   }
 
-  static async deleteCoverType(id: number): Promise<void> {
+  static async deleteEdition(id: number): Promise<void> {
     try {
-      const url = this.buildUrl(`CoverTypes/${id}`);
-      console.log("Deleting cover type:", url);
+      const url = this.buildUrl(`Editions/${id}`);
+      console.log("Deleting edition:", url);
 
       const response = await fetch(url, {
         method: "DELETE",
@@ -223,9 +217,9 @@ export class CoverTypeService {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      console.log("Cover type deleted successfully");
+      console.log("Edition deleted successfully");
     } catch (error) {
-      console.error("Error deleting cover type:", error);
+      console.error("Error deleting edition:", error);
       throw error;
     }
   }

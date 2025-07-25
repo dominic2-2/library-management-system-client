@@ -30,7 +30,6 @@ import {
   PowerSettingsNew as LogoutIcon,
   ExpandLess,
   ExpandMore,
-  Book as BookIcon,
   Style as StyleIcon,
   Description as DescriptionIcon,
   Business as BusinessIcon,

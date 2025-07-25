@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useRef, useCallback } from "react";
 import {
   Table,
   TableBody,
@@ -19,22 +19,21 @@ import {
   Chip,
   Avatar,
 } from "@mui/material";
-import { Edit, Visibility, LibraryBooks, Shield } from "@mui/icons-material";
-
-export interface CoverType {
-  cover_type_id: number;
-  cover_type_name: string;
-  description?: string;
-  durability_rating?: number;
-  cost_factor?: number;
-  book_count?: number;
-}
+import {
+  Edit,
+  Visibility,
+  LibraryBooks,
+  Shield,
+  Delete,
+} from "@mui/icons-material";
+import { CoverType } from "@/types/CoverType";
 
 export interface CoverTypesTableProps {
   data: CoverType[];
   loading?: boolean;
   onAdd?: () => void;
   onEdit?: (coverType: CoverType) => void;
+  onDelete?: (coverType: CoverType) => void;
   onView?: (id: number) => void;
   page?: number;
   rowsPerPage?: number;
@@ -42,6 +41,12 @@ export interface CoverTypesTableProps {
   onPageChange?: (event: unknown, newPage: number) => void;
   onRowsPerPageChange?: (event: React.ChangeEvent<HTMLInputElement>) => void;
   showActions?: boolean;
+  searchInput?: React.ReactNode;
+  // Infinite scroll props
+  hasNextPage?: boolean;
+  onLoadMore?: () => void;
+  loadingMore?: boolean;
+  enableInfiniteScroll?: boolean;
 }
 
 export const CoverTypesTable: React.FC<CoverTypesTableProps> = ({
@@ -49,6 +54,7 @@ export const CoverTypesTable: React.FC<CoverTypesTableProps> = ({
   loading = false,
   onAdd,
   onEdit,
+  onDelete,
   onView,
   page = 0,
   rowsPerPage = 10,
@@ -56,7 +62,15 @@ export const CoverTypesTable: React.FC<CoverTypesTableProps> = ({
   onPageChange,
   onRowsPerPageChange,
   showActions = true,
+  searchInput,
+  hasNextPage = false,
+  onLoadMore,
+  loadingMore = false,
+  enableInfiniteScroll = true,
 }) => {
+  const loadMoreRef = useRef<HTMLTableRowElement>(null);
+  const tableContainerRef = useRef<HTMLDivElement>(null);
+
   const handleChangePage = (event: unknown, newPage: number): void => {
     if (onPageChange) {
       onPageChange(event, newPage);
@@ -77,11 +91,52 @@ export const CoverTypesTable: React.FC<CoverTypesTableProps> = ({
     }
   };
 
+  const handleDelete = (coverType: CoverType): void => {
+    if (onDelete) {
+      onDelete(coverType);
+    }
+  };
+
   const handleView = (id: number): void => {
     if (onView) {
       onView(id);
     }
   };
+
+  // Infinite scroll logic
+  const handleLoadMore = useCallback(() => {
+    if (hasNextPage && !loadingMore && onLoadMore) {
+      onLoadMore();
+    }
+  }, [hasNextPage, loadingMore, onLoadMore]);
+
+  useEffect(() => {
+    if (!enableInfiniteScroll) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const target = entries[0];
+        if (target.isIntersecting) {
+          handleLoadMore();
+        }
+      },
+      {
+        threshold: 0.1,
+        rootMargin: "20px",
+      }
+    );
+
+    const currentRef = loadMoreRef.current;
+    if (currentRef) {
+      observer.observe(currentRef);
+    }
+
+    return () => {
+      if (currentRef) {
+        observer.unobserve(currentRef);
+      }
+    };
+  }, [handleLoadMore, enableInfiniteScroll]);
 
   const getCoverTypeColor = (coverTypeName: string): string => {
     const name = coverTypeName.toLowerCase();
@@ -92,16 +147,7 @@ export const CoverTypesTable: React.FC<CoverTypesTableProps> = ({
     return "#607d8b";
   };
 
-  const getDurabilityChipColor = (
-    rating?: number
-  ): "default" | "success" | "warning" | "error" => {
-    if (!rating) return "default";
-    if (rating >= 8) return "success";
-    if (rating >= 6) return "warning";
-    return "error";
-  };
-
-  if (loading) {
+  if (loading && data.length === 0) {
     return (
       <Box
         display="flex"
@@ -135,6 +181,14 @@ export const CoverTypesTable: React.FC<CoverTypesTableProps> = ({
           >
             Cover Types Management
           </Typography>
+          {totalCount > 0 && (
+            <Chip
+              label={`Total: ${totalCount}`}
+              size="small"
+              color="warning"
+              variant="outlined"
+            />
+          )}
         </Box>
         {onAdd && (
           <Button
@@ -152,7 +206,24 @@ export const CoverTypesTable: React.FC<CoverTypesTableProps> = ({
         )}
       </Box>
 
-      <TableContainer>
+      {/* Search Input Section */}
+      {searchInput && searchInput}
+
+      <TableContainer
+        ref={tableContainerRef}
+        sx={{
+          maxHeight: enableInfiniteScroll ? 600 : "none",
+          overflowY: enableInfiniteScroll ? "auto" : "visible",
+          // Hide scrollbar
+          "&::-webkit-scrollbar": {
+            display: "none",
+          },
+          // Hide scrollbar for Firefox
+          scrollbarWidth: "none",
+          // Ensure scrolling still works
+          msOverflowStyle: "none",
+        }}
+      >
         <Table stickyHeader>
           <TableHead>
             <TableRow>
@@ -161,15 +232,6 @@ export const CoverTypesTable: React.FC<CoverTypesTableProps> = ({
               </TableCell>
               <TableCell sx={{ fontWeight: "bold", bgcolor: "#fff3e0" }}>
                 Cover Type
-              </TableCell>
-              <TableCell sx={{ fontWeight: "bold", bgcolor: "#fff3e0" }}>
-                Description
-              </TableCell>
-              <TableCell sx={{ fontWeight: "bold", bgcolor: "#fff3e0" }}>
-                Durability
-              </TableCell>
-              <TableCell sx={{ fontWeight: "bold", bgcolor: "#fff3e0" }}>
-                Cost Factor
               </TableCell>
               <TableCell sx={{ fontWeight: "bold", bgcolor: "#fff3e0" }}>
                 Books Count
@@ -184,7 +246,7 @@ export const CoverTypesTable: React.FC<CoverTypesTableProps> = ({
           <TableBody>
             {data.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={showActions ? 7 : 6} align="center">
+                <TableCell colSpan={showActions ? 4 : 3} align="center">
                   <Typography color="textSecondary">
                     No cover types found
                   </Typography>
@@ -193,20 +255,20 @@ export const CoverTypesTable: React.FC<CoverTypesTableProps> = ({
             ) : (
               data.map((coverType) => (
                 <TableRow
-                  key={coverType.cover_type_id}
+                  key={coverType.coverTypeId}
                   hover
                   sx={{ "&:last-child td, &:last-child th": { border: 0 } }}
                 >
                   <TableCell component="th" scope="row">
                     <Typography variant="body2" sx={{ fontWeight: "medium" }}>
-                      {coverType.cover_type_id}
+                      {coverType.coverTypeId}
                     </Typography>
                   </TableCell>
                   <TableCell>
                     <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
                       <Avatar
                         sx={{
-                          bgcolor: getCoverTypeColor(coverType.cover_type_name),
+                          bgcolor: getCoverTypeColor(coverType.coverTypeName),
                           width: 36,
                           height: 36,
                         }}
@@ -214,51 +276,15 @@ export const CoverTypesTable: React.FC<CoverTypesTableProps> = ({
                         <Shield fontSize="small" />
                       </Avatar>
                       <Typography variant="body2" sx={{ fontWeight: "500" }}>
-                        {coverType.cover_type_name}
+                        {coverType.coverTypeName}
                       </Typography>
                     </Box>
                   </TableCell>
                   <TableCell>
-                    <Typography
-                      variant="body2"
-                      color="textSecondary"
-                      sx={{
-                        maxWidth: 200,
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                        whiteSpace: "nowrap",
-                      }}
-                    >
-                      {coverType.description || "No description"}
-                    </Typography>
-                  </TableCell>
-                  <TableCell>
-                    {coverType.durability_rating ? (
-                      <Chip
-                        label={`${coverType.durability_rating}/10`}
-                        color={getDurabilityChipColor(
-                          coverType.durability_rating
-                        )}
-                        size="small"
-                      />
-                    ) : (
-                      <Typography variant="caption" color="textSecondary">
-                        Not rated
-                      </Typography>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <Typography variant="body2" color="textSecondary">
-                      {coverType.cost_factor
-                        ? `${coverType.cost_factor}x`
-                        : "Standard"}
-                    </Typography>
-                  </TableCell>
-                  <TableCell>
                     <Chip
-                      label={coverType.book_count || 0}
+                      label={coverType.bookCount || 0}
                       color={
-                        coverType.book_count && coverType.book_count > 0
+                        coverType.bookCount && coverType.bookCount > 0
                           ? "warning"
                           : "default"
                       }
@@ -273,9 +299,7 @@ export const CoverTypesTable: React.FC<CoverTypesTableProps> = ({
                             <IconButton
                               size="small"
                               color="info"
-                              onClick={() =>
-                                handleView(coverType.cover_type_id)
-                              }
+                              onClick={() => handleView(coverType.coverTypeId)}
                               sx={{
                                 bgcolor: "#17a2b8",
                                 color: "white",
@@ -306,17 +330,76 @@ export const CoverTypesTable: React.FC<CoverTypesTableProps> = ({
                             </IconButton>
                           </Tooltip>
                         )}
+                        {onDelete && (
+                          <Tooltip title="Delete Cover Type">
+                            <IconButton
+                              size="small"
+                              color="error"
+                              onClick={() => handleDelete(coverType)}
+                              sx={{
+                                bgcolor: "#f44336",
+                                color: "white",
+                                "&:hover": {
+                                  bgcolor: "#d32f2f",
+                                },
+                              }}
+                            >
+                              <Delete fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                        )}
                       </Box>
                     </TableCell>
                   )}
                 </TableRow>
               ))
             )}
+
+            {/* Infinite scroll trigger element */}
+            {enableInfiniteScroll && hasNextPage && (
+              <TableRow ref={loadMoreRef}>
+                <TableCell colSpan={showActions ? 4 : 3} align="center">
+                  <Box py={2}>
+                    {loadingMore ? (
+                      <Box
+                        display="flex"
+                        justifyContent="center"
+                        alignItems="center"
+                        gap={1}
+                      >
+                        <CircularProgress size={20} />
+                        <Typography variant="body2" color="textSecondary">
+                          Loading more cover types...
+                        </Typography>
+                      </Box>
+                    ) : (
+                      <Typography variant="body2" color="textSecondary">
+                        Scroll down to load more
+                      </Typography>
+                    )}
+                  </Box>
+                </TableCell>
+              </TableRow>
+            )}
+
+            {/* End of data indicator */}
+            {enableInfiniteScroll && !hasNextPage && data.length > 0 && (
+              <TableRow>
+                <TableCell colSpan={showActions ? 4 : 3} align="center">
+                  <Box py={2}>
+                    <Typography variant="body2" color="textSecondary">
+                      No more cover types to load
+                    </Typography>
+                  </Box>
+                </TableCell>
+              </TableRow>
+            )}
           </TableBody>
         </Table>
       </TableContainer>
 
-      {onPageChange && onRowsPerPageChange && (
+      {/* Traditional pagination - hidden when infinite scroll is enabled */}
+      {!enableInfiniteScroll && onPageChange && onRowsPerPageChange && (
         <TablePagination
           rowsPerPageOptions={[5, 10, 25, 50]}
           component="div"

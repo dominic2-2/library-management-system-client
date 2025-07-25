@@ -15,6 +15,7 @@ interface ApiBook {
   author: string;
   volumn: string;
   availability: string;
+  coverImg: string;
 }
 
 // OData response structure
@@ -182,6 +183,7 @@ export const fetchBooks = async (
         language: book.language,
         book_status: book.bookStatus as "Active" | "Inactive" | "Deleted",
         description: book.description,
+        coverImg: book.coverImg,
         category_id: 1, // Default category
         category_name: "Văn học", // Default category name
         authors: [
@@ -232,8 +234,6 @@ export const searchBooks = async (
   });
 
   try {
-    console.log("Searching with query:", `${BOOKS_API_BASE}${odataQuery}`);
-
     const response = await apiRequest<ODataResponse<ApiBook> | ApiBookResponse>(
       `${BOOKS_API_BASE}${odataQuery}`
     );
@@ -250,8 +250,6 @@ export const searchBooks = async (
       // Direct array (fallback)
       booksData = Array.isArray(response) ? response : [];
     }
-    console.log("Search results:", booksData);
-
     // Transform the data to match our expected structure
     const transformedBooks = booksData.map((book: ApiBook) => {
       // Parse availability string (e.g., "2/2" -> available: 2, total: 2)
@@ -263,6 +261,7 @@ export const searchBooks = async (
         language: book.language,
         book_status: book.bookStatus as "Active" | "Inactive" | "Deleted",
         description: book.description,
+        coverImg: book.coverImg,
         category_id: 1, // Default category
         category_name: "Văn học", // Default category name
         authors: [
@@ -333,6 +332,54 @@ export const createBook = async (
   } catch (error) {
     console.error("Error creating book:", error);
     throw new Error("Failed to create book");
+  }
+};
+
+// Create new book with image upload
+export const createBookWithImage = async (
+  bookData: {
+    title: string;
+    language: string;
+    bookStatus: string;
+    description: string;
+    categoryId: number;
+    authors: { authorName: string; bio?: string }[];
+  },
+  coverImage?: File
+): Promise<BookWithDetails> => {
+  try {
+    const formData = new FormData();
+
+    // Add book data as JSON string
+    formData.append("bookData", JSON.stringify(bookData));
+
+    // Add cover image if provided
+    if (coverImage) {
+      formData.append("coverImage", coverImage);
+    }
+
+    console.log("Creating book with image:", bookData, coverImage?.name);
+
+    const response = await fetch(`${BOOKS_API_BASE}/with-image`, {
+      method: "POST",
+      body: formData,
+      // Don't set Content-Type header, let browser set it with boundary for FormData
+    });
+
+    console.log(`Create book response status: ${response.status}`);
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`Create book API Error: ${response.status} - ${errorText}`);
+      throw new Error(`HTTP error! status: ${response.status} - ${errorText}`);
+    }
+
+    const createdBook = await response.json();
+    console.log("Book created successfully:", createdBook);
+    return createdBook;
+  } catch (error) {
+    console.error("Error creating book with image:", error);
+    throw new Error("Failed to create book with image");
   }
 };
 

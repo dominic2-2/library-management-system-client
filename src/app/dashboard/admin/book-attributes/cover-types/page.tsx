@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   Box,
   Dialog,
@@ -11,18 +11,27 @@ import {
   TextField,
   Alert,
   Snackbar,
+  Stack,
+  InputAdornment,
 } from "@mui/material";
+import { Search as SearchIcon } from "@mui/icons-material";
+import { CoverTypesTable } from "@/components/table/cover-types-table";
+import { CoverType } from "@/types/CoverType";
 import {
-  CoverTypesTable,
-  CoverType,
-} from "@/components/table/cover-types-table";
-import { CoverTypeService } from "@/services/cover-type-service";
+  CoverTypeService,
+  PaginatedCoverTypesResponse,
+} from "@/services/cover-type-service";
 
 export default function CoverTypesPage() {
   const [coverTypes, setCoverTypes] = useState<CoverType[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasNextPage, setHasNextPage] = useState(false);
+  const [currentPage, setCurrentPage] = useState(0);
+  const [totalCount, setTotalCount] = useState(0);
   const [formOpen, setFormOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<CoverType | null>(null);
+  const [searchTerm, setSearchTerm] = useState("");
   const [formData, setFormData] = useState({ name: "" });
   const [snackbar, setSnackbar] = useState<{
     open: boolean;
@@ -30,57 +39,37 @@ export default function CoverTypesPage() {
     severity: "success" | "error";
   }>({ open: false, message: "", severity: "success" });
 
-  const fetchCoverTypes = async () => {
-    setLoading(true);
+  const pageSize = 10;
+
+  const fetchCoverTypes = async (
+    page: number = 0,
+    search?: string,
+    resetData: boolean = true
+  ) => {
+    if (page === 0) {
+      setLoading(true);
+    } else {
+      setLoadingMore(true);
+    }
+
     try {
-      const result = await CoverTypeService.getCoverTypes();
-      let dataArray: CoverType[] = [];
+      // Use real API with pagination
+      const result: PaginatedCoverTypesResponse =
+        await CoverTypeService.getCoverTypesPaginated({
+          page,
+          pageSize,
+          searchName: search,
+        });
 
-      // Create interface for API response format
-      interface CoverTypeApiResponse {
-        coverTypeId?: number;
-        cover_type_id?: number;
-        coverTypeName?: string;
-        cover_type_name?: string;
+      if (resetData || page === 0) {
+        setCoverTypes(result.data);
+      } else {
+        setCoverTypes((prev) => [...prev, ...result.data]);
       }
 
-      if (Array.isArray(result)) {
-        dataArray = result.map((item: CoverTypeApiResponse, idx: number) => ({
-          cover_type_id: item.coverTypeId ?? item.cover_type_id ?? idx,
-          cover_type_name: item.coverTypeName ?? item.cover_type_name ?? "",
-          description: "High-quality cover type",
-          durability_rating: Math.floor(Math.random() * 5) + 6, // 6-10 rating
-          cost_factor: Math.random() * 2 + 1, // 1-3x cost factor
-          book_count: Math.floor(Math.random() * 75),
-        }));
-      } else if (result && typeof result === "object") {
-        const responseObj = result as Record<string, unknown>;
-        if (Array.isArray(responseObj.$values)) {
-          dataArray = responseObj.$values.map(
-            (item: CoverTypeApiResponse, idx: number) => ({
-              cover_type_id: item.coverTypeId ?? item.cover_type_id ?? idx,
-              cover_type_name: item.coverTypeName ?? item.cover_type_name ?? "",
-              description: "High-quality cover type",
-              durability_rating: Math.floor(Math.random() * 5) + 6,
-              cost_factor: Math.random() * 2 + 1,
-              book_count: Math.floor(Math.random() * 75),
-            })
-          );
-        } else if (Array.isArray(responseObj.data)) {
-          dataArray = responseObj.data.map(
-            (item: CoverTypeApiResponse, idx: number) => ({
-              cover_type_id: item.coverTypeId ?? item.cover_type_id ?? idx,
-              cover_type_name: item.coverTypeName ?? item.cover_type_name ?? "",
-              description: "High-quality cover type",
-              durability_rating: Math.floor(Math.random() * 5) + 6,
-              cost_factor: Math.random() * 2 + 1,
-              book_count: Math.floor(Math.random() * 75),
-            })
-          );
-        }
-      }
-
-      setCoverTypes(dataArray);
+      setHasNextPage(result.hasNextPage);
+      setCurrentPage(result.currentPage);
+      setTotalCount(result.totalCount);
     } catch (error) {
       console.error("Error fetching cover types:", error);
       setSnackbar({
@@ -90,12 +79,30 @@ export default function CoverTypesPage() {
       });
     } finally {
       setLoading(false);
+      setLoadingMore(false);
     }
   };
 
+  const handleLoadMore = useCallback(() => {
+    if (!loadingMore && hasNextPage) {
+      fetchCoverTypes(currentPage + 1, searchTerm, false);
+    }
+  }, [loadingMore, hasNextPage, currentPage, searchTerm]);
+
+  // Initial load
   useEffect(() => {
-    fetchCoverTypes();
+    fetchCoverTypes(0, "");
   }, []);
+
+  // Debounced search effect
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      setCurrentPage(0);
+      fetchCoverTypes(0, searchTerm, true);
+    }, 500); // 500ms debounce
+
+    return () => clearTimeout(timeoutId);
+  }, [searchTerm]);
 
   const handleAdd = () => {
     setEditingItem(null);
@@ -105,8 +112,33 @@ export default function CoverTypesPage() {
 
   const handleEdit = (item: CoverType) => {
     setEditingItem(item);
-    setFormData({ name: item.cover_type_name });
+    setFormData({ name: item.coverTypeName });
     setFormOpen(true);
+  };
+
+  const handleDelete = async (item: CoverType) => {
+    if (
+      window.confirm(`Are you sure you want to delete "${item.coverTypeName}"?`)
+    ) {
+      try {
+        await CoverTypeService.deleteCoverType(item.coverTypeId);
+        setSnackbar({
+          open: true,
+          message: "Cover type deleted successfully",
+          severity: "success",
+        });
+        // Refresh the first page after deletion
+        setCurrentPage(0);
+        fetchCoverTypes(0, searchTerm, true);
+      } catch (error) {
+        console.error("Error deleting cover type:", error);
+        setSnackbar({
+          open: true,
+          message: "Failed to delete cover type",
+          severity: "error",
+        });
+      }
+    }
   };
 
   const handleFormSubmit = async () => {
@@ -120,19 +152,26 @@ export default function CoverTypesPage() {
     }
 
     try {
+      let success = false;
+
       if (editingItem) {
-        await CoverTypeService.updateCoverType({
-          cover_type_id: editingItem.cover_type_id,
-          cover_type_name: formData.name,
+        success = await CoverTypeService.updateCoverType({
+          coverTypeId: editingItem.coverTypeId,
+          coverTypeName: formData.name,
         });
-        setSnackbar({
-          open: true,
-          message: "Cover type updated successfully",
-          severity: "success",
-        });
+
+        if (success) {
+          setSnackbar({
+            open: true,
+            message: "Cover type updated successfully",
+            severity: "success",
+          });
+        } else {
+          throw new Error("Update failed");
+        }
       } else {
         await CoverTypeService.createCoverType({
-          cover_type_name: formData.name,
+          coverTypeName: formData.name,
         });
         setSnackbar({
           open: true,
@@ -140,8 +179,11 @@ export default function CoverTypesPage() {
           severity: "success",
         });
       }
+
       setFormOpen(false);
-      fetchCoverTypes();
+      // Refresh the first page after create/update
+      setCurrentPage(0);
+      fetchCoverTypes(0, searchTerm, true);
     } catch (error) {
       console.error("Error saving cover type:", error);
       setSnackbar({
@@ -169,8 +211,46 @@ export default function CoverTypesPage() {
       <CoverTypesTable
         data={coverTypes}
         loading={loading}
+        loadingMore={loadingMore}
+        hasNextPage={hasNextPage}
+        onLoadMore={handleLoadMore}
+        totalCount={totalCount}
+        enableInfiniteScroll={true}
         onAdd={handleAdd}
         onEdit={handleEdit}
+        onDelete={handleDelete}
+        showActions={true}
+        searchInput={
+          <Box sx={{ p: 2, borderBottom: "1px solid rgba(224, 224, 224, 1)" }}>
+            <Stack direction="row" spacing={2} alignItems="center">
+              <TextField
+                label="Search Cover Types"
+                variant="outlined"
+                size="small"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Search by cover type name..."
+                sx={{ minWidth: 300 }}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <SearchIcon />
+                    </InputAdornment>
+                  ),
+                }}
+              />
+              {searchTerm && (
+                <Button
+                  variant="outlined"
+                  size="small"
+                  onClick={() => setSearchTerm("")}
+                >
+                  Clear
+                </Button>
+              )}
+            </Stack>
+          </Box>
+        }
       />
 
       {/* Add/Edit Form Dialog */}

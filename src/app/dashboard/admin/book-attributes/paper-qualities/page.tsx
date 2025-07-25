@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   Box,
   Dialog,
@@ -11,18 +11,31 @@ import {
   TextField,
   Alert,
   Snackbar,
+  Stack,
+  InputAdornment,
 } from "@mui/material";
+import { Search as SearchIcon } from "@mui/icons-material";
+import { PaperQualitiesTable } from "@/components/table/paper-qualities-table";
 import {
-  PaperQualitiesTable,
+  PaperQualityService,
+  PaginatedPaperQualitiesResponse,
+} from "@/services/paper-quality-service";
+import {
   PaperQuality,
-} from "@/components/table/paper-qualities-table";
-import { PaperQualityService } from "@/services/paper-quality-service";
+  PaperQualityCreateRequest,
+  PaperQualityUpdateRequest,
+} from "@/types/paper-quality";
 
 export default function PaperQualitiesPage() {
   const [paperQualities, setPaperQualities] = useState<PaperQuality[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasNextPage, setHasNextPage] = useState(false);
+  const [currentPage, setCurrentPage] = useState(0);
+  const [totalCount, setTotalCount] = useState(0);
   const [formOpen, setFormOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<PaperQuality | null>(null);
+  const [searchTerm, setSearchTerm] = useState("");
   const [formData, setFormData] = useState({ name: "" });
   const [snackbar, setSnackbar] = useState<{
     open: boolean;
@@ -30,68 +43,37 @@ export default function PaperQualitiesPage() {
     severity: "success" | "error";
   }>({ open: false, message: "", severity: "success" });
 
-  const fetchPaperQualities = async () => {
-    setLoading(true);
+  const pageSize = 10;
+
+  const fetchPaperQualities = async (
+    page: number = 0,
+    search?: string,
+    resetData: boolean = true
+  ) => {
+    if (page === 0) {
+      setLoading(true);
+    } else {
+      setLoadingMore(true);
+    }
+
     try {
-      const result = await PaperQualityService.getPaperQualities();
-      let dataArray: PaperQuality[] = [];
+      // Use real API with pagination
+      const result: PaginatedPaperQualitiesResponse =
+        await PaperQualityService.getPaperQualitiesPaginated({
+          page,
+          pageSize,
+          searchName: search,
+        });
 
-      // Create interface for API response format
-      interface PaperQualityApiResponse {
-        paperQualityId?: number;
-        paper_quality_id?: number;
-        paperQualityName?: string;
-        paper_quality_name?: string;
+      if (resetData || page === 0) {
+        setPaperQualities(result.data);
+      } else {
+        setPaperQualities((prev) => [...prev, ...result.data]);
       }
 
-      if (Array.isArray(result)) {
-        dataArray = result.map(
-          (item: PaperQualityApiResponse, idx: number) => ({
-            paper_quality_id:
-              item.paperQualityId ?? item.paper_quality_id ?? idx,
-            paper_quality_name:
-              item.paperQualityName ?? item.paper_quality_name ?? "",
-            description: "Premium paper quality",
-            gsm_weight: 70 + Math.floor(Math.random() * 50), // 70-120 GSM
-            eco_friendly: Math.random() > 0.5,
-            quality_rating: Math.floor(Math.random() * 3) + 3, // 3-5 stars
-            book_count: Math.floor(Math.random() * 60),
-          })
-        );
-      } else if (result && typeof result === "object") {
-        const responseObj = result as Record<string, unknown>;
-        if (Array.isArray(responseObj.$values)) {
-          dataArray = responseObj.$values.map(
-            (item: PaperQualityApiResponse, idx: number) => ({
-              paper_quality_id:
-                item.paperQualityId ?? item.paper_quality_id ?? idx,
-              paper_quality_name:
-                item.paperQualityName ?? item.paper_quality_name ?? "",
-              description: "Premium paper quality",
-              gsm_weight: 70 + Math.floor(Math.random() * 50),
-              eco_friendly: Math.random() > 0.5,
-              quality_rating: Math.floor(Math.random() * 3) + 3,
-              book_count: Math.floor(Math.random() * 60),
-            })
-          );
-        } else if (Array.isArray(responseObj.data)) {
-          dataArray = responseObj.data.map(
-            (item: PaperQualityApiResponse, idx: number) => ({
-              paper_quality_id:
-                item.paperQualityId ?? item.paper_quality_id ?? idx,
-              paper_quality_name:
-                item.paperQualityName ?? item.paper_quality_name ?? "",
-              description: "Premium paper quality",
-              gsm_weight: 70 + Math.floor(Math.random() * 50),
-              eco_friendly: Math.random() > 0.5,
-              quality_rating: Math.floor(Math.random() * 3) + 3,
-              book_count: Math.floor(Math.random() * 60),
-            })
-          );
-        }
-      }
-
-      setPaperQualities(dataArray);
+      setHasNextPage(result.hasNextPage);
+      setCurrentPage(result.currentPage);
+      setTotalCount(result.totalCount);
     } catch (error) {
       console.error("Error fetching paper qualities:", error);
       setSnackbar({
@@ -101,12 +83,30 @@ export default function PaperQualitiesPage() {
       });
     } finally {
       setLoading(false);
+      setLoadingMore(false);
     }
   };
 
+  const handleLoadMore = useCallback(() => {
+    if (!loadingMore && hasNextPage) {
+      fetchPaperQualities(currentPage + 1, searchTerm, false);
+    }
+  }, [loadingMore, hasNextPage, currentPage, searchTerm]);
+
+  // Initial load
   useEffect(() => {
-    fetchPaperQualities();
+    fetchPaperQualities(0, "");
   }, []);
+
+  // Debounced search effect
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      setCurrentPage(0);
+      fetchPaperQualities(0, searchTerm, true);
+    }, 500); // 500ms debounce
+
+    return () => clearTimeout(timeoutId);
+  }, [searchTerm]);
 
   const handleAdd = () => {
     setEditingItem(null);
@@ -116,8 +116,35 @@ export default function PaperQualitiesPage() {
 
   const handleEdit = (item: PaperQuality) => {
     setEditingItem(item);
-    setFormData({ name: item.paper_quality_name });
+    setFormData({ name: item.paperQualityName });
     setFormOpen(true);
+  };
+
+  const handleDelete = async (item: PaperQuality) => {
+    if (
+      window.confirm(
+        `Are you sure you want to delete "${item.paperQualityName}"?`
+      )
+    ) {
+      try {
+        await PaperQualityService.deletePaperQuality(item.paperQualityId);
+        setSnackbar({
+          open: true,
+          message: "Paper quality deleted successfully",
+          severity: "success",
+        });
+        // Refresh the first page after deletion
+        setCurrentPage(0);
+        fetchPaperQualities(0, searchTerm, true);
+      } catch (error) {
+        console.error("Error deleting paper quality:", error);
+        setSnackbar({
+          open: true,
+          message: "Failed to delete paper quality",
+          severity: "error",
+        });
+      }
+    }
   };
 
   const handleFormSubmit = async () => {
@@ -131,28 +158,40 @@ export default function PaperQualitiesPage() {
     }
 
     try {
+      let success = false;
+
       if (editingItem) {
-        await PaperQualityService.updatePaperQuality({
-          paper_quality_id: editingItem.paper_quality_id,
-          paper_quality_name: formData.name,
-        });
-        setSnackbar({
-          open: true,
-          message: "Paper quality updated successfully",
-          severity: "success",
-        });
+        const updateData: PaperQualityUpdateRequest = {
+          paperQualityId: editingItem.paperQualityId,
+          paperQualityName: formData.name,
+        };
+        success = await PaperQualityService.updatePaperQuality(updateData);
+
+        if (success) {
+          setSnackbar({
+            open: true,
+            message: "Paper quality updated successfully",
+            severity: "success",
+          });
+        } else {
+          throw new Error("Update failed");
+        }
       } else {
-        await PaperQualityService.createPaperQuality({
-          paper_quality_name: formData.name,
-        });
+        const createData: PaperQualityCreateRequest = {
+          paperQualityName: formData.name,
+        };
+        await PaperQualityService.createPaperQuality(createData);
         setSnackbar({
           open: true,
           message: "Paper quality created successfully",
           severity: "success",
         });
       }
+
       setFormOpen(false);
-      fetchPaperQualities();
+      // Refresh the first page after create/update
+      setCurrentPage(0);
+      fetchPaperQualities(0, searchTerm, true);
     } catch (error) {
       console.error("Error saving paper quality:", error);
       setSnackbar({
@@ -180,8 +219,46 @@ export default function PaperQualitiesPage() {
       <PaperQualitiesTable
         data={paperQualities}
         loading={loading}
+        loadingMore={loadingMore}
+        hasNextPage={hasNextPage}
+        onLoadMore={handleLoadMore}
+        totalCount={totalCount}
+        enableInfiniteScroll={true}
         onAdd={handleAdd}
         onEdit={handleEdit}
+        onDelete={handleDelete}
+        showActions={true}
+        searchInput={
+          <Box sx={{ p: 2, borderBottom: "1px solid rgba(224, 224, 224, 1)" }}>
+            <Stack direction="row" spacing={2} alignItems="center">
+              <TextField
+                label="Search Paper Qualities"
+                variant="outlined"
+                size="small"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Search by paper quality name..."
+                sx={{ minWidth: 300 }}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <SearchIcon />
+                    </InputAdornment>
+                  ),
+                }}
+              />
+              {searchTerm && (
+                <Button
+                  variant="outlined"
+                  size="small"
+                  onClick={() => setSearchTerm("")}
+                >
+                  Clear
+                </Button>
+              )}
+            </Stack>
+          </Box>
+        }
       />
 
       {/* Add/Edit Form Dialog */}

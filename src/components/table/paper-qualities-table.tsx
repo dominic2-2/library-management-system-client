@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useRef, useCallback } from "react";
 import {
   Table,
   TableBody,
@@ -18,25 +18,16 @@ import {
   Tooltip,
   Chip,
   Avatar,
-  Rating,
 } from "@mui/material";
-import { Edit, Visibility, Description, Eco } from "@mui/icons-material";
-
-export interface PaperQuality {
-  paper_quality_id: number;
-  paper_quality_name: string;
-  description?: string;
-  gsm_weight?: number;
-  eco_friendly?: boolean;
-  quality_rating?: number;
-  book_count?: number;
-}
+import { Edit, Visibility, Delete, Description } from "@mui/icons-material";
+import { PaperQuality } from "@/types/paper-quality";
 
 export interface PaperQualitiesTableProps {
   data: PaperQuality[];
   loading?: boolean;
   onAdd?: () => void;
   onEdit?: (paperQuality: PaperQuality) => void;
+  onDelete?: (paperQuality: PaperQuality) => void;
   onView?: (id: number) => void;
   page?: number;
   rowsPerPage?: number;
@@ -44,6 +35,12 @@ export interface PaperQualitiesTableProps {
   onPageChange?: (event: unknown, newPage: number) => void;
   onRowsPerPageChange?: (event: React.ChangeEvent<HTMLInputElement>) => void;
   showActions?: boolean;
+  searchInput?: React.ReactNode;
+  // Infinite scroll props
+  hasNextPage?: boolean;
+  onLoadMore?: () => void;
+  loadingMore?: boolean;
+  enableInfiniteScroll?: boolean;
 }
 
 export const PaperQualitiesTable: React.FC<PaperQualitiesTableProps> = ({
@@ -51,6 +48,7 @@ export const PaperQualitiesTable: React.FC<PaperQualitiesTableProps> = ({
   loading = false,
   onAdd,
   onEdit,
+  onDelete,
   onView,
   page = 0,
   rowsPerPage = 10,
@@ -58,7 +56,15 @@ export const PaperQualitiesTable: React.FC<PaperQualitiesTableProps> = ({
   onPageChange,
   onRowsPerPageChange,
   showActions = true,
+  searchInput,
+  hasNextPage = false,
+  onLoadMore,
+  loadingMore = false,
+  enableInfiniteScroll = true,
 }) => {
+  const loadMoreRef = useRef<HTMLTableRowElement>(null);
+  const tableContainerRef = useRef<HTMLDivElement>(null);
+
   const handleChangePage = (event: unknown, newPage: number): void => {
     if (onPageChange) {
       onPageChange(event, newPage);
@@ -79,31 +85,54 @@ export const PaperQualitiesTable: React.FC<PaperQualitiesTableProps> = ({
     }
   };
 
+  const handleDelete = (paperQuality: PaperQuality): void => {
+    if (onDelete) {
+      onDelete(paperQuality);
+    }
+  };
+
   const handleView = (id: number): void => {
     if (onView) {
       onView(id);
     }
   };
 
-  const getPaperQualityColor = (qualityName: string): string => {
-    const name = qualityName.toLowerCase();
-    if (name.includes("premium") || name.includes("high")) return "#4caf50";
-    if (name.includes("standard") || name.includes("normal")) return "#2196f3";
-    if (name.includes("economy") || name.includes("basic")) return "#ff9800";
-    if (name.includes("recycled") || name.includes("eco")) return "#8bc34a";
-    return "#9c27b0";
-  };
+  // Infinite scroll logic
+  const handleLoadMore = useCallback(() => {
+    if (hasNextPage && !loadingMore && onLoadMore) {
+      onLoadMore();
+    }
+  }, [hasNextPage, loadingMore, onLoadMore]);
 
-  const getGsmColor = (
-    gsm?: number
-  ): "default" | "success" | "warning" | "error" => {
-    if (!gsm) return "default";
-    if (gsm >= 90) return "success";
-    if (gsm >= 70) return "warning";
-    return "error";
-  };
+  useEffect(() => {
+    if (!enableInfiniteScroll) return;
 
-  if (loading) {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const target = entries[0];
+        if (target.isIntersecting) {
+          handleLoadMore();
+        }
+      },
+      {
+        threshold: 0.1,
+        rootMargin: "20px",
+      }
+    );
+
+    const currentRef = loadMoreRef.current;
+    if (currentRef) {
+      observer.observe(currentRef);
+    }
+
+    return () => {
+      if (currentRef) {
+        observer.unobserve(currentRef);
+      }
+    };
+  }, [handleLoadMore, enableInfiniteScroll]);
+
+  if (loading && data.length === 0) {
     return (
       <Box
         display="flex"
@@ -137,6 +166,14 @@ export const PaperQualitiesTable: React.FC<PaperQualitiesTableProps> = ({
           >
             Paper Qualities Management
           </Typography>
+          {totalCount > 0 && (
+            <Chip
+              label={`Total: ${totalCount}`}
+              size="small"
+              color="secondary"
+              variant="outlined"
+            />
+          )}
         </Box>
         {onAdd && (
           <Button
@@ -154,7 +191,24 @@ export const PaperQualitiesTable: React.FC<PaperQualitiesTableProps> = ({
         )}
       </Box>
 
-      <TableContainer>
+      {/* Search Input Section */}
+      {searchInput && searchInput}
+
+      <TableContainer
+        ref={tableContainerRef}
+        sx={{
+          maxHeight: enableInfiniteScroll ? 600 : "none",
+          overflowY: enableInfiniteScroll ? "auto" : "visible",
+          // Hide scrollbar
+          "&::-webkit-scrollbar": {
+            display: "none",
+          },
+          // Hide scrollbar for Firefox
+          scrollbarWidth: "none",
+          // Ensure scrolling still works
+          msOverflowStyle: "none",
+        }}
+      >
         <Table stickyHeader>
           <TableHead>
             <TableRow>
@@ -162,16 +216,7 @@ export const PaperQualitiesTable: React.FC<PaperQualitiesTableProps> = ({
                 ID
               </TableCell>
               <TableCell sx={{ fontWeight: "bold", bgcolor: "#f3e5f5" }}>
-                Paper Quality
-              </TableCell>
-              <TableCell sx={{ fontWeight: "bold", bgcolor: "#f3e5f5" }}>
-                Description
-              </TableCell>
-              <TableCell sx={{ fontWeight: "bold", bgcolor: "#f3e5f5" }}>
-                GSM Weight
-              </TableCell>
-              <TableCell sx={{ fontWeight: "bold", bgcolor: "#f3e5f5" }}>
-                Quality Rating
+                Paper Quality Name
               </TableCell>
               <TableCell sx={{ fontWeight: "bold", bgcolor: "#f3e5f5" }}>
                 Books Count
@@ -186,7 +231,7 @@ export const PaperQualitiesTable: React.FC<PaperQualitiesTableProps> = ({
           <TableBody>
             {data.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={showActions ? 7 : 6} align="center">
+                <TableCell colSpan={showActions ? 4 : 3} align="center">
                   <Typography color="textSecondary">
                     No paper qualities found
                   </Typography>
@@ -195,100 +240,36 @@ export const PaperQualitiesTable: React.FC<PaperQualitiesTableProps> = ({
             ) : (
               data.map((paperQuality) => (
                 <TableRow
-                  key={paperQuality.paper_quality_id}
+                  key={paperQuality.paperQualityId}
                   hover
                   sx={{ "&:last-child td, &:last-child th": { border: 0 } }}
                 >
                   <TableCell component="th" scope="row">
                     <Typography variant="body2" sx={{ fontWeight: "medium" }}>
-                      {paperQuality.paper_quality_id}
+                      {paperQuality.paperQualityId}
                     </Typography>
                   </TableCell>
                   <TableCell>
                     <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
                       <Avatar
                         sx={{
-                          bgcolor: getPaperQualityColor(
-                            paperQuality.paper_quality_name
-                          ),
+                          bgcolor: "#9c27b0",
                           width: 36,
                           height: 36,
                         }}
                       >
-                        {paperQuality.eco_friendly ? (
-                          <Eco fontSize="small" />
-                        ) : (
-                          <Description fontSize="small" />
-                        )}
+                        <Description fontSize="small" />
                       </Avatar>
-                      <Box>
-                        <Typography variant="body2" sx={{ fontWeight: "500" }}>
-                          {paperQuality.paper_quality_name}
-                        </Typography>
-                        {paperQuality.eco_friendly && (
-                          <Chip
-                            label="Eco-Friendly"
-                            size="small"
-                            color="success"
-                            sx={{ mt: 0.5, fontSize: "0.6rem", height: 16 }}
-                          />
-                        )}
-                      </Box>
+                      <Typography variant="body2" sx={{ fontWeight: "500" }}>
+                        {paperQuality.paperQualityName}
+                      </Typography>
                     </Box>
                   </TableCell>
                   <TableCell>
-                    <Typography
-                      variant="body2"
-                      color="textSecondary"
-                      sx={{
-                        maxWidth: 200,
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                        whiteSpace: "nowrap",
-                      }}
-                    >
-                      {paperQuality.description || "No description"}
-                    </Typography>
-                  </TableCell>
-                  <TableCell>
-                    {paperQuality.gsm_weight ? (
-                      <Chip
-                        label={`${paperQuality.gsm_weight} GSM`}
-                        color={getGsmColor(paperQuality.gsm_weight)}
-                        size="small"
-                      />
-                    ) : (
-                      <Typography variant="caption" color="textSecondary">
-                        Not specified
-                      </Typography>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    {paperQuality.quality_rating ? (
-                      <Box
-                        sx={{ display: "flex", alignItems: "center", gap: 1 }}
-                      >
-                        <Rating
-                          value={paperQuality.quality_rating}
-                          readOnly
-                          size="small"
-                          precision={0.5}
-                        />
-                        <Typography variant="caption" color="textSecondary">
-                          ({paperQuality.quality_rating}/5)
-                        </Typography>
-                      </Box>
-                    ) : (
-                      <Typography variant="caption" color="textSecondary">
-                        Not rated
-                      </Typography>
-                    )}
-                  </TableCell>
-                  <TableCell>
                     <Chip
-                      label={paperQuality.book_count || 0}
+                      label={paperQuality.bookCount || 0}
                       color={
-                        paperQuality.book_count && paperQuality.book_count > 0
+                        paperQuality.bookCount && paperQuality.bookCount > 0
                           ? "secondary"
                           : "default"
                       }
@@ -304,7 +285,7 @@ export const PaperQualitiesTable: React.FC<PaperQualitiesTableProps> = ({
                               size="small"
                               color="info"
                               onClick={() =>
-                                handleView(paperQuality.paper_quality_id)
+                                handleView(paperQuality.paperQualityId)
                               }
                               sx={{
                                 bgcolor: "#17a2b8",
@@ -336,17 +317,76 @@ export const PaperQualitiesTable: React.FC<PaperQualitiesTableProps> = ({
                             </IconButton>
                           </Tooltip>
                         )}
+                        {onDelete && (
+                          <Tooltip title="Delete Paper Quality">
+                            <IconButton
+                              size="small"
+                              color="error"
+                              onClick={() => handleDelete(paperQuality)}
+                              sx={{
+                                bgcolor: "#f44336",
+                                color: "white",
+                                "&:hover": {
+                                  bgcolor: "#d32f2f",
+                                },
+                              }}
+                            >
+                              <Delete fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                        )}
                       </Box>
                     </TableCell>
                   )}
                 </TableRow>
               ))
             )}
+
+            {/* Infinite scroll trigger element */}
+            {enableInfiniteScroll && hasNextPage && (
+              <TableRow ref={loadMoreRef}>
+                <TableCell colSpan={showActions ? 4 : 3} align="center">
+                  <Box py={2}>
+                    {loadingMore ? (
+                      <Box
+                        display="flex"
+                        justifyContent="center"
+                        alignItems="center"
+                        gap={1}
+                      >
+                        <CircularProgress size={20} />
+                        <Typography variant="body2" color="textSecondary">
+                          Loading more paper qualities...
+                        </Typography>
+                      </Box>
+                    ) : (
+                      <Typography variant="body2" color="textSecondary">
+                        Scroll down to load more
+                      </Typography>
+                    )}
+                  </Box>
+                </TableCell>
+              </TableRow>
+            )}
+
+            {/* End of data indicator */}
+            {enableInfiniteScroll && !hasNextPage && data.length > 0 && (
+              <TableRow>
+                <TableCell colSpan={showActions ? 4 : 3} align="center">
+                  <Box py={2}>
+                    <Typography variant="body2" color="textSecondary">
+                      No more paper qualities to load
+                    </Typography>
+                  </Box>
+                </TableCell>
+              </TableRow>
+            )}
           </TableBody>
         </Table>
       </TableContainer>
 
-      {onPageChange && onRowsPerPageChange && (
+      {/* Traditional pagination - hidden when infinite scroll is enabled */}
+      {!enableInfiniteScroll && onPageChange && onRowsPerPageChange && (
         <TablePagination
           rowsPerPageOptions={[5, 10, 25, 50]}
           component="div"

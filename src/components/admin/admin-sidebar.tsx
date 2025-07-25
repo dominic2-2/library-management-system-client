@@ -20,6 +20,8 @@ import {
   Style as StyleIcon,
   Description as DescriptionIcon,
   Business as BusinessIcon,
+  LibraryBooks as EditionIcon,
+  Person as PersonIcon,
   ExpandLess,
   ExpandMore,
 } from "@mui/icons-material";
@@ -76,6 +78,16 @@ const adminMenuItems: MenuItem[] = [
         text: "Publishers",
         icon: <BusinessIcon />,
         path: "/dashboard/admin/book-attributes/publishers",
+      },
+      {
+        text: "Editions",
+        icon: <EditionIcon />,
+        path: "/dashboard/admin/book-attributes/editions",
+      },
+      {
+        text: "Authors",
+        icon: <PersonIcon />,
+        path: "/dashboard/admin/book-attributes/authors",
       },
     ],
   },

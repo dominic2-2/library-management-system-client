@@ -14,8 +14,9 @@ import {
   CircularProgress,
   Typography,
   Chip,
+  Avatar,
 } from "@mui/material";
-import { Visibility, Edit } from "@mui/icons-material";
+import { Visibility, Edit, Book as BookIcon } from "@mui/icons-material";
 import { BookWithDetails } from "@/types/book";
 
 interface BooksTableProps {
@@ -84,6 +85,9 @@ export const BooksTable: React.FC<BooksTableProps> = ({
           <TableHead>
             <TableRow>
               <TableCell sx={{ fontWeight: "bold", bgcolor: "#f5f5f5" }}>
+                Cover
+              </TableCell>
+              <TableCell sx={{ fontWeight: "bold", bgcolor: "#f5f5f5" }}>
                 Title
               </TableCell>
               <TableCell sx={{ fontWeight: "bold", bgcolor: "#f5f5f5" }}>
@@ -96,7 +100,7 @@ export const BooksTable: React.FC<BooksTableProps> = ({
                 Status
               </TableCell>
               <TableCell sx={{ fontWeight: "bold", bgcolor: "#f5f5f5" }}>
-                Volume
+                Total Volume
               </TableCell>
               <TableCell sx={{ fontWeight: "bold", bgcolor: "#f5f5f5" }}>
                 Availability
@@ -109,7 +113,7 @@ export const BooksTable: React.FC<BooksTableProps> = ({
           <TableBody>
             {books.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} align="center">
+                <TableCell colSpan={8} align="center">
                   <Typography color="textSecondary">No books found</Typography>
                 </TableCell>
               </TableRow>
@@ -121,6 +125,20 @@ export const BooksTable: React.FC<BooksTableProps> = ({
                     hover
                     sx={{ "&:last-child td, &:last-child th": { border: 0 } }}
                   >
+                    <TableCell>
+                      <Avatar
+                        src={book.coverImg}
+                        alt={book.title}
+                        sx={{
+                          width: 40,
+                          height: 56,
+                          borderRadius: 1,
+                          bgcolor: "#f5f5f5",
+                        }}
+                      >
+                        {!book.coverImg && <BookIcon sx={{ color: "#999" }} />}
+                      </Avatar>
+                    </TableCell>
                     <TableCell component="th" scope="row">
                       <Typography variant="body2" sx={{ fontWeight: "medium" }}>
                         {book.title}
