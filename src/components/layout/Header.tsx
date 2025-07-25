@@ -44,6 +44,7 @@ import {
 } from '@mui/icons-material';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/providers/AuthProvider';
+import Sidebar from './Sidebar';
 
 const Header: React.FC = () => {
   const { isAuthenticated, user, logout, loading, getSessionDuration, getBrowserSummary } = useAuth();
@@ -90,7 +91,7 @@ const Header: React.FC = () => {
     }
   };
 
-
+  const [openSidebar, setOpenSidebar] = useState(false);
 
 
   if (loading) return null;
@@ -183,6 +184,7 @@ const Header: React.FC = () => {
                   background: alpha(theme.palette.common.white, 0.2)
                 }
               }}
+              onClick={() => setOpenSidebar(true)}
             >
               <MenuIcon />
             </IconButton>
@@ -484,6 +486,8 @@ const Header: React.FC = () => {
           )}
         </Toolbar>
       </AppBar>
+
+      <Sidebar open={openSidebar} onClose={() => setOpenSidebar(false)} userRole={user?.role} />
 
       {/* ✅ LOGOUT CONFIRMATION DIALOG */}
       <Dialog
