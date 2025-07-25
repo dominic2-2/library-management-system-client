@@ -12,12 +12,6 @@ interface AdminLayoutProps {
 const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  // Mock current user - replace with actual auth context
-  const currentUser = {
-    full_name: "Bwire Mashauri",
-    username: "bwire.mashauri",
-  };
-
   const handleMenuClick = (): void => {
     setSidebarOpen(true);
   };
@@ -31,10 +25,9 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
       <AdminSidebar
         open={sidebarOpen}
         onClose={handleSidebarClose}
-        currentUser={currentUser}
       />
       <Box sx={{ flexGrow: 1, display: "flex", flexDirection: "column" }}>
-        <AdminHeader onMenuClick={handleMenuClick} currentUser={currentUser} />
+        <AdminHeader />
         <Box
           component="main"
           sx={{

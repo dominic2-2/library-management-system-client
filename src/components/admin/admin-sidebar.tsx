@@ -55,6 +55,11 @@ const adminMenuItems: MenuItem[] = [
     path: "/dashboard/admin/book",
   },
   {
+    text: "User Management",
+    icon: <PersonIcon />,
+    path: "/dashboard/admin/user-management",
+  },
+  {
     text: "Book Attributes",
     icon: <CategoryIcon />,
     path: "/dashboard/admin/book-attributes",
