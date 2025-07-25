@@ -203,7 +203,7 @@ const Header: React.FC = () => {
                   transition: 'transform 0.2s ease'
                 }
               }}
-              onClick={() => router.push('/')}
+              onClick={() => router.push('/user/home')}
             >
               MyApp
             </Typography>
