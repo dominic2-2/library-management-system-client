@@ -23,8 +23,6 @@ interface ReservationListDTO {
   availableCopies: number | null;
 }
 
-const USER_ID = 35;
-
 export default function ReservationDetailPage() {
   const { id } = useParams();
   const [reservation, setReservation] = useState<ReservationListDTO | null>(null);
@@ -34,7 +32,10 @@ export default function ReservationDetailPage() {
   useEffect(() => {
     const fetchDetail = async () => {
       setLoading(true);
-      const res = await fetch(`${ENV.apiUrl}/api/reservations/${id}`);
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${ENV.apiUrl}/reservations/${id}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
       if (res.ok) {
         const data = await res.json();
         if (Array.isArray(data)) {
@@ -50,7 +51,10 @@ export default function ReservationDetailPage() {
       setLoading(false);
     };
     const fetchQueuePosition = async () => {
-      const res = await fetch(`${ENV.apiUrl}/api/reservations/${id}/position`);
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${ENV.apiUrl}/reservations/${id}/position`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
       if (res.ok) {
         const data = await res.json();
         setQueuePosition(data.queuePosition);

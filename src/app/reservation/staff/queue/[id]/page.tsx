@@ -14,7 +14,10 @@ export default function StaffReservationQueuePage() {
   useEffect(() => {
     const fetchQueue = async () => {
       setLoading(true);
-      const res = await fetch(`${ENV.apiUrl}/api/reservations/queue/${id}`);
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${ENV.apiUrl}/reservations/queue/${id}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
       if (res.ok) {
         const data = await res.json();
         setQueue(data);
@@ -25,7 +28,10 @@ export default function StaffReservationQueuePage() {
   }, [id]);
 
   const handleNext = async () => {
-    const res = await fetch(`${ENV.apiUrl}/api/reservations/next/${id}`);
+    const token = localStorage.getItem('token');
+    const res = await fetch(`${ENV.apiUrl}/reservations/next/${id}`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
     if (res.ok) {
       const data = await res.json();
       if (data && data.reservationId) {

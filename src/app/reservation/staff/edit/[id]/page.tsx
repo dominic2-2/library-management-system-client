@@ -5,12 +5,10 @@ import { useParams, useRouter } from 'next/navigation';
 import { Box, Paper, Typography, Grid, Button, TextField, Select, MenuItem, Divider, Stack } from '@mui/material';
 import { ENV } from '@/config/env';
 
-const STAFF_ID = 32;
-
 const STATUS_OPTIONS = [
   { value: 'Pending', label: 'Chờ xử lý' },
   { value: 'Fulfilled', label: 'Đã hoàn thành' },
-  { value: 'Canceled', label: 'Đã hủy' },
+  { value: 'Cancelled', label: 'Đã hủy' },
   { value: 'Expired', label: 'Hết hạn' },
 ];
 
@@ -21,35 +19,68 @@ export default function StaffReservationEditPage() {
   const [loading, setLoading] = useState(true);
   const [status, setStatus] = useState('Pending');
   const [expirationDate, setExpirationDate] = useState('');
-  const [processedBy, setProcessedBy] = useState(STAFF_ID);
+  const [processedBy, setProcessedBy] = useState<number | string>('');
   const [saving, setSaving] = useState(false);
+  const [userId, setUserId] = useState<number | null>(null);
+  const [processorName, setProcessorName] = useState('');
 
   useEffect(() => {
     const fetchDetail = async () => {
       setLoading(true);
-      const res = await fetch(`${ENV.apiUrl}/api/reservations/${id}`);
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${ENV.apiUrl}/reservations/${id}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
       if (res.ok) {
         const data = await res.json();
         const r = data && typeof data === 'object' ? data : (Array.isArray(data) ? data[0] : null);
         setReservation(r);
         setStatus(r?.reservationStatus || 'Pending');
         setExpirationDate(r?.expirationDate ? r.expirationDate.split('T')[0] : '');
-        setProcessedBy(r?.processedBy || STAFF_ID);
+        setProcessedBy(userId ?? r?.processedBy ?? '');
       }
       setLoading(false);
     };
     if (id) fetchDetail();
   }, [id]);
 
+  useEffect(() => {
+    // Lấy userId từ profile
+    const fetchProfile = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const res = await fetch(`${ENV.apiUrl}/user/profile`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setUserId(data.userId);
+          setProcessorName(data.fullName || '');
+        }
+      } catch (e) {}
+    };
+    fetchProfile();
+  }, []);
+
+  useEffect(() => {
+    if (userId !== null) {
+      setProcessedBy(userId);
+    }
+  }, [userId]);
+
   const handleSave = async () => {
     setSaving(true);
-    const res = await fetch(`${ENV.apiUrl}/api/reservations/${id}`, {
+    const token = localStorage.getItem('token');
+    const res = await fetch(`${ENV.apiUrl}/reservations/${id}`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
       body: JSON.stringify({
         reservationStatus: status,
         expirationDate: expirationDate ? new Date(expirationDate).toISOString() : null,
-        processedBy: Number(processedBy),
+        processedBy: Number(userId ?? processedBy),
       }),
     });
     const data = await res.json();
@@ -74,11 +105,11 @@ export default function StaffReservationEditPage() {
           <Grid item xs={12}>
             <TextField
               label="Người xử lý (ID)"
-              value={processedBy}
-              onChange={e => setProcessedBy(e.target.value)}
+              value={processedBy ? `${processedBy} - ${processorName}` : ''}
               fullWidth
               size="small"
-              type="number"
+              type="text"
+              InputProps={{ readOnly: true }}
             />
           </Grid>
           <Grid item xs={12}>

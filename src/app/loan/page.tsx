@@ -39,7 +39,10 @@ export default function LoanListPage() {
     }
 
     console.log("Query:", query);
-    const res = await fetch(`${ENV.apiUrl}/api/loans${query}`);
+    const token = localStorage.getItem('token');
+    const res = await fetch(`${ENV.apiUrl}/loans${query}`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
     if (!res.ok) {
       console.error("Fetch failed:", res.status, res.statusText);
       return;
@@ -49,12 +52,15 @@ export default function LoanListPage() {
   };
 
   const fetchCount = async () => {
-    let url = `${ENV.apiUrl}/api/loans/count?keyword=${encodeURIComponent(keyword)}`;
+    let url = `${ENV.apiUrl}/loans/count?keyword=${encodeURIComponent(keyword)}`;
     if (statusFilter !== 'All') {
       url += `&status=${encodeURIComponent(statusFilter)}`;
     }
 
-    const res = await fetch(url);
+    const token = localStorage.getItem('token');
+    const res = await fetch(url, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
     if (!res.ok) {
       console.error("Count fetch failed:", res.status, res.statusText);
       return;
@@ -183,7 +189,8 @@ export default function LoanListPage() {
                   sx={{ mr: 1 }}
                   disabled={selectedLoan.extended || selectedLoan.loanStatus === 'Returned'}
                   onClick={async () => {
-                    const res = await fetch(`${ENV.apiUrl}/api/loans/${selectedLoan.loanId}/extend`, { method: 'PUT' });
+                    const token = localStorage.getItem('token');
+                    const res = await fetch(`${ENV.apiUrl}/loans/${selectedLoan.loanId}/extend`, { method: 'PUT', headers: token ? { Authorization: `Bearer ${token}` } : {} });
                     if (res.ok) {
                       alert('Gia hạn thành công');
                       await refreshData();
@@ -203,7 +210,8 @@ export default function LoanListPage() {
                   sx={{ mr: 1 }}
                   disabled={selectedLoan.loanStatus === 'Returned'}
                   onClick={async () => {
-                    await fetch(`${ENV.apiUrl}/api/loans/${selectedLoan.loanId}/return`, { method: 'PUT' });
+                    const token = localStorage.getItem('token');
+                    await fetch(`${ENV.apiUrl}/loans/${selectedLoan.loanId}/return`, { method: 'PUT', headers: token ? { Authorization: `Bearer ${token}` } : {} });
                     alert('Đã đánh dấu đã trả');
                     await refreshData();
                     setSelectedLoan(null);
@@ -218,7 +226,8 @@ export default function LoanListPage() {
                   size="small"
                   disabled={selectedLoan.loanStatus !== 'Overdue' && selectedLoan.fineAmount <= 0}
                   onClick={async () => {
-                    await fetch(`${ENV.apiUrl}/api/loans/${selectedLoan.loanId}/payfine`, { method: 'PUT' });
+                    const token = localStorage.getItem('token');
+                    await fetch(`${ENV.apiUrl}/loans/${selectedLoan.loanId}/payfine`, { method: 'PUT', headers: token ? { Authorization: `Bearer ${token}` } : {} });
                     alert('Đã nộp tiền phạt');
                     await refreshData();
                     setSelectedLoan(null);

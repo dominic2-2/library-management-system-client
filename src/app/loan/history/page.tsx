@@ -7,15 +7,16 @@ import {
 import { ENV } from '@/config/env';
 
 export default function LoanHistoryPage() {
-  const userName = 'namhongson';
   const [loans, setLoans] = useState<any[]>([]);
   const [keyword, setKeyword] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [loading, setLoading] = useState(true);
+  const [username, setUsername] = useState<string>('');
 
   const fetchLoans = async () => {
     setLoading(true);
-    let query = `?$orderby=BorrowDate asc&$filter=UserName eq '${userName}'`;
+    if (!username) return;
+    let query = `?$orderby=BorrowDate asc&$filter=UserName eq '${username}'`;
 
     let filters: string[] = [];
     if (statusFilter !== 'All') {
@@ -30,7 +31,10 @@ export default function LoanHistoryPage() {
       query += ` and ${filters.join(' and ')}`;
     }
 
-    const res = await fetch(`${ENV.apiUrl}/api/loans${query}`);
+    const token = localStorage.getItem('token');
+    const res = await fetch(`${ENV.apiUrl}/loans${query}`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
     if (res.ok) {
       const data = await res.json();
       setLoans(data);
@@ -39,11 +43,29 @@ export default function LoanHistoryPage() {
   };
 
   useEffect(() => {
+    // Lấy username từ profile
+    const fetchProfile = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const res = await fetch(`${ENV.apiUrl}/user/profile`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setUsername(data.username);
+        }
+      } catch (e) {}
+    };
+    fetchProfile();
+  }, []);
+
+  useEffect(() => {
     fetchLoans();
-  }, [keyword, statusFilter]);
+  }, [keyword, statusFilter, username]);
 
   const handleExtend = async (loanId: number) => {
-    const res = await fetch(`${ENV.apiUrl}/api/loans/${loanId}/extend`, { method: 'PUT' });
+    const token = localStorage.getItem('token');
+    const res = await fetch(`${ENV.apiUrl}/loans/${loanId}/extend`, { method: 'PUT', headers: token ? { Authorization: `Bearer ${token}` } : {} });
     if (res.ok) {
       alert('Gia hạn thành công');
       await fetchLoans();
