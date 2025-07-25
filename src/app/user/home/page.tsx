@@ -92,7 +92,7 @@ export default function HomePage() {
                                     <Button size="small" variant="outlined">Chi tiết</Button>
                                 </Link>
                                 {book.available && (
-                                    <Link href={`/reserve/${book.bookId}`} passHref>
+                                    <Link href={`/reservation/user/create?bookId=${book.bookId}`} passHref>
                                         <Button size="small" variant="contained" color="primary">Mượn</Button>
                                     </Link>
                                 )}

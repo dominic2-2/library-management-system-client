@@ -22,14 +22,14 @@ import { useParams } from 'next/navigation'
 import { getHomepageBooks } from '@/services/book.service'
 import { BookItem } from '@/types/book'
 import Link from 'next/link'
-
-
+import { useRouter } from 'next/navigation'
 
 
 export default function BookDetailPage() {
     const { bookId } = useParams()
     const [book, setBook] = useState<BookDetailDto | null>(null)
     const [relatedBooks, setRelatedBooks] = useState<BookItem[]>([])
+    const router = useRouter()
 
     useEffect(() => {
         if (book) {
@@ -149,8 +149,8 @@ export default function BookDetailPage() {
                                 variant="contained"
                                 color="primary"
                                 disabled={!variant || variant.availableCopies === 0}
-
                                 sx={{ mr: 2 }}
+                                onClick={() => book && router.push(`/reservation/user/create?bookId=${book.bookId}`)}
                             >
                                 Mượn sách
                             </Button>
@@ -186,7 +186,7 @@ export default function BookDetailPage() {
                                                 </Button>
                                             </Link>
                                             {related.available && (
-                                                <Link href={`/reserve/${related.bookId}`} passHref>
+                                                <Link href={`/reservation/user/create?bookId=${related.bookId}`} passHref>
                                                     <Button size="small" variant="contained" color="primary">
                                                         Mượn
                                                     </Button>
