@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Box, Paper, Typography, Grid, Button, TextField } from '@mui/material';
 import { ENV } from '@/config/env';
 
@@ -12,12 +12,33 @@ export default function CreateReservationPage() {
   const [availability, setAvailability] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
+  const [userId, setUserId] = useState<number | null>(null);
+
+  useEffect(() => {
+    // Lấy userId từ profile
+    const fetchProfile = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const res = await fetch(`${ENV.apiUrl}/user/profile`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setUserId(data.userId);
+        }
+      } catch (e) {}
+    };
+    fetchProfile();
+  }, []);
 
   const checkAvailability = async () => {
     setLoading(true);
     setMessage('');
     setAvailability(null);
-    const res = await fetch(`${ENV.apiUrl}/api/reservations/availability/${variantId}`);
+    const token = localStorage.getItem('token');
+    const res = await fetch(`${ENV.apiUrl}/reservations/availability/${variantId}`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
     if (res.ok) {
       const data = await res.json();
       setAvailability(data);
@@ -30,11 +51,20 @@ export default function CreateReservationPage() {
   const handleReserve = async () => {
     setLoading(true);
     setMessage('');
-    const res = await fetch(`${ENV.apiUrl}/api/reservations`, {
+    const token = localStorage.getItem('token');
+    if (!userId) {
+      setMessage('Không xác định được user.');
+      setLoading(false);
+      return;
+    }
+    const res = await fetch(`${ENV.apiUrl}/reservations`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
       body: JSON.stringify({
-        userId: USER_ID,
+        userId: userId,
         variantId: Number(variantId),
         expirationDate: expirationDate ? new Date(expirationDate).toISOString() : null,
       }),

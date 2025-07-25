@@ -24,7 +24,6 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 const PAGE_SIZE = 10;
-const STAFF_ID = 32;
 
 export default function StaffReservationListPage() {
   const [reservations, setReservations] = useState<any[]>([]);
@@ -33,16 +32,39 @@ export default function StaffReservationListPage() {
   const [keyword, setKeyword] = useState('');
   const [status, setStatus] = useState('');
   const [loading, setLoading] = useState(true);
+  const [userId, setUserId] = useState<number | null>(null);
+
+  useEffect(() => {
+    // Lấy userId từ profile
+    const fetchProfile = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const res = await fetch(`${ENV.apiUrl}/user/profile`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setUserId(data.userId);
+        }
+      } catch (e) {
+        // Có thể xử lý lỗi nếu cần
+      }
+    };
+    fetchProfile();
+  }, []);
 
   const fetchReservations = async () => {
     setLoading(true);
+    const token = localStorage.getItem('token');
     const params = new URLSearchParams({
       page: String(page),
       pageSize: String(PAGE_SIZE),
     });
     if (keyword) params.append('keyword', keyword);
     if (status) params.append('status', status);
-    const res = await fetch(`${ENV.apiUrl}/api/reservations?${params.toString()}`);
+    const res = await fetch(`${ENV.apiUrl}/reservations?${params.toString()}`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
     if (res.ok) {
       const data = await res.json();
       setReservations(data.data);
@@ -58,7 +80,15 @@ export default function StaffReservationListPage() {
 
   const handleCancel = async (reservationId: number) => {
     if (!window.confirm('Bạn chắc chắn muốn hủy đặt trước này?')) return;
-    const res = await fetch(`${ENV.apiUrl}/api/reservations/${reservationId}/staff-cancel?staffId=${STAFF_ID}`, { method: 'DELETE' });
+    if (!userId) {
+      alert('Không xác định được nhân viên.');
+      return;
+    }
+    const token = localStorage.getItem('token');
+    const res = await fetch(`${ENV.apiUrl}/reservations/${reservationId}/staff-cancel?staffId=${userId}`, {
+      method: 'DELETE',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
     const data = await res.json();
     if (res.ok) {
       alert(data.message || 'Nhân viên đã hủy đặt trước thành công');
@@ -70,7 +100,11 @@ export default function StaffReservationListPage() {
 
   const handleProcessExpired = async () => {
     if (!window.confirm('Xác nhận xử lý tất cả đặt trước hết hạn?')) return;
-    const res = await fetch(`${ENV.apiUrl}/api/reservations/process-expired`, { method: 'POST' });
+    const token = localStorage.getItem('token');
+    const res = await fetch(`${ENV.apiUrl}/reservations/process-expired`, {
+      method: 'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
     const data = await res.json();
     alert(data.message || 'Đã xử lý đặt trước hết hạn');
     fetchReservations();

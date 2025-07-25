@@ -24,17 +24,20 @@ interface ReservationListDTO {
   availableCopies: number | null;
 }
 
-const USER_ID = 35;
-
 export default function MyReservationsPage() {
   const [reservations, setReservations] = useState<ReservationListDTO[]>([]);
   const [loading, setLoading] = useState(true);
   const [queuePositions, setQueuePositions] = useState<Record<number, number>>({});
   const [search, setSearch] = useState('');
+  const [userId, setUserId] = useState<number | null>(null);
 
   const fetchReservations = async () => {
     setLoading(true);
-    const res = await fetch(`${ENV.apiUrl}/api/reservations/user/${USER_ID}`);
+    const token = localStorage.getItem('token');
+    if (!userId) return;
+    const res = await fetch(`${ENV.apiUrl}/reservations/user/${userId}`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
     if (res.ok) {
       const data = await res.json();
       setReservations(data);
@@ -46,7 +49,10 @@ export default function MyReservationsPage() {
   };
 
   const fetchQueuePosition = async (reservationId: number) => {
-    const res = await fetch(`${ENV.apiUrl}/api/reservations/${reservationId}/position`);
+    const token = localStorage.getItem('token');
+    const res = await fetch(`${ENV.apiUrl}/reservations/${reservationId}/position`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
     if (res.ok) {
       const data = await res.json();
       setQueuePositions((prev) => ({ ...prev, [reservationId]: data.queuePosition }));
@@ -54,11 +60,33 @@ export default function MyReservationsPage() {
   };
 
   useEffect(() => {
-    fetchReservations();
+    // Lấy userId từ profile
+    const fetchProfile = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const res = await fetch(`${ENV.apiUrl}/user/profile`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setUserId(data.userId);
+        }
+      } catch (e) {}
+    };
+    fetchProfile();
   }, []);
 
+  useEffect(() => {
+    fetchReservations();
+  }, [userId]); // Re-fetch when userId changes
+
   const handleCancel = async (reservationId: number) => {
-    const res = await fetch(`${ENV.apiUrl}/api/reservations/${reservationId}/cancel?userId=${USER_ID}`, { method: 'DELETE' });
+    const token = localStorage.getItem('token');
+    if (!userId) return;
+    const res = await fetch(`${ENV.apiUrl}/reservations/${reservationId}/cancel?userId=${userId}`, {
+      method: 'DELETE',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
     const data = await res.json();
     if (res.ok) {
       alert(data.message || 'Hủy đặt trước thành công');

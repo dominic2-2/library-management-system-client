@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { Box, Paper, Typography, Grid, Button, Divider, Stack } from '@mui/material';
 import { ENV } from '@/config/env';
 
-const STAFF_ID = 32;
+// const STAFF_ID = 32;
 
 const STATUS_LABELS: Record<string, string> = {
   Pending: 'Chờ xử lý',
@@ -21,11 +21,15 @@ export default function StaffReservationDetailPage() {
   const [reservation, setReservation] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [queuePosition, setQueuePosition] = useState<number | null>(null);
+  const [userId, setUserId] = useState<number | null>(null);
 
   useEffect(() => {
     const fetchDetail = async () => {
       setLoading(true);
-      const res = await fetch(`${ENV.apiUrl}/api/reservations/${id}`);
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${ENV.apiUrl}/reservations/${id}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
       if (res.ok) {
         const data = await res.json();
         setReservation(data && typeof data === 'object' ? data : (Array.isArray(data) ? data[0] : null));
@@ -35,7 +39,10 @@ export default function StaffReservationDetailPage() {
       setLoading(false);
     };
     const fetchQueuePosition = async () => {
-      const res = await fetch(`${ENV.apiUrl}/api/reservations/${id}/position`);
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${ENV.apiUrl}/reservations/${id}/position`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
       if (res.ok) {
         const data = await res.json();
         setQueuePosition(data.queuePosition);
@@ -47,9 +54,34 @@ export default function StaffReservationDetailPage() {
     }
   }, [id]);
 
+  useEffect(() => {
+    // Lấy userId từ profile
+    const fetchProfile = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const res = await fetch(`${ENV.apiUrl}/user/profile`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setUserId(data.userId);
+        }
+      } catch (e) {}
+    };
+    fetchProfile();
+  }, []);
+
   const handleCancel = async () => {
     if (!window.confirm('Bạn chắc chắn muốn hủy đặt trước này?')) return;
-    const res = await fetch(`${ENV.apiUrl}/api/reservations/${id}/staff-cancel?staffId=${STAFF_ID}`, { method: 'DELETE' });
+    if (!userId) {
+      alert('Không xác định được nhân viên.');
+      return;
+    }
+    const token = localStorage.getItem('token');
+    const res = await fetch(`${ENV.apiUrl}/reservations/${id}/staff-cancel?staffId=${userId}`, {
+      method: 'DELETE',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
     const data = await res.json();
     alert(data.message || 'Nhân viên đã hủy đặt trước thành công');
     router.push('/reservation/staff');

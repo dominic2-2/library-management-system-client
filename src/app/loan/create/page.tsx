@@ -37,7 +37,10 @@ export default function CreateLoanPage() {
   }, []);
 
   const handleLoadBook = async () => {
-    const res = await fetch(`${ENV.apiUrl}/api/loans/book?barcode=${barcode}`);
+    const token = localStorage.getItem('token');
+    const res = await fetch(`${ENV.apiUrl}/loans/book?barcode=${barcode}`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
     if (!res.ok) {
       alert('Không tìm thấy sách!');
       return;
@@ -47,7 +50,10 @@ export default function CreateLoanPage() {
   };
 
   const handleLoadUser = async () => {
-    const res = await fetch(`${ENV.apiUrl}/api/loans/user?query=${userQuery}`);
+    const token = localStorage.getItem('token');
+    const res = await fetch(`${ENV.apiUrl}/loans/user?query=${userQuery}`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
     if (!res.ok) {
       alert('Không tìm thấy người dùng!');
       return;
@@ -57,9 +63,13 @@ export default function CreateLoanPage() {
   };
 
   const handleCreateLoan = async () => {
-    const res = await fetch(`${ENV.apiUrl}/api/loans`, {
+    const token = localStorage.getItem('token');
+    const res = await fetch(`${ENV.apiUrl}/loans`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
       body: JSON.stringify({
         userId: userInfo.userId,
         copyId: bookInfo.copyId,

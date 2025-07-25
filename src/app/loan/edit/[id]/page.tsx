@@ -22,7 +22,10 @@ export default function EditLoanPage() {
 
   useEffect(() => {
     const fetchLoan = async () => {
-      const res = await fetch(`${ENV.apiUrl}/api/loans/${id}`);
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${ENV.apiUrl}/loans/${id}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
       if (!res.ok) {
         alert('Không tìm thấy thông tin mượn sách');
         router.push('/loan');
@@ -40,9 +43,13 @@ export default function EditLoanPage() {
   }, [id, router]);
 
   const handleSave = async () => {
-    const res = await fetch(`${ENV.apiUrl}/api/loans/${loan.loanId}`, {
+    const token = localStorage.getItem('token');
+    const res = await fetch(`${ENV.apiUrl}/loans/${loan.loanId}`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
       body: JSON.stringify({
         loanStatus,
         fineAmount,
