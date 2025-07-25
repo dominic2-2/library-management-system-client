@@ -147,3 +147,9 @@ html {
     background: rgba(66, 165, 245, 0.3);
   }
 }
+/* Suppress browser extension attributes that cause hydration mismatches */
+[data-bis_register],
+[data-bis_skin_checked],
+[data-__processed__] {
+  /* These attributes are added by browser extensions and should be ignored */
+}
