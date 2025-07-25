@@ -5,7 +5,7 @@ import { BookDetailDto, BookItem } from '@/types/book'
 export async function getHomepageBooks(): Promise<BookItem[]> {
     const res = await fetch(`${ENV.odataUrl}/Books/books`)
     const data = await res.json()
-    const rawBooks = data?.$values || []
+    const rawBooks = Array.isArray(data) ? data : (data?.$values || []);
 
     return rawBooks.map((b: any) => ({
         ...b,
@@ -14,13 +14,14 @@ export async function getHomepageBooks(): Promise<BookItem[]> {
 }
 
 export async function getBookDetail(bookId: number): Promise<BookDetailDto> {
-    const res = await fetch(`${ENV.odataUrl}/books/${bookId}`)
-    const data = await res.json()
+    const res = await fetch(`${ENV.odataUrl}/books/${bookId}`);
+    const data = await res.json();
 
     return {
         ...data,
-        authors: data.authors?.$values ?? [],
-        variants: data.variants?.$values ?? [],
-    }
+        authors: Array.isArray(data.authors) ? data.authors : (data.authors?.$values ?? []),
+        variants: Array.isArray(data.variants) ? data.variants : (data.variants?.$values ?? []),
+    };
 }
+
 

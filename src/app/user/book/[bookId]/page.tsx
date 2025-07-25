@@ -44,9 +44,14 @@ export default function BookDetailPage() {
 
     useEffect(() => {
         if (bookId) {
-            getBookDetail(Number(bookId)).then(setBook)
+            getBookDetail(Number(bookId)).then((res) => {
+                console.log('📚 Book detail:', res);
+                setBook(res);
+            });
         }
-    }, [bookId])
+    }, [bookId]);
+
+    
 
     if (!book) return <Typography sx={{ p: 4 }}>Đang tải thông tin sách...</Typography>
 
@@ -110,33 +115,41 @@ export default function BookDetailPage() {
 
                         <Divider sx={{ my: 2 }} />
 
-                        <Box sx={{ lineHeight: 1.8 }}>
-                            <Typography><strong>Năm xuất bản:</strong> {variant.publicationYear}</Typography>
-                            {variant.isbn && (
-                                <Typography><strong>ISBN:</strong> {variant.isbn}</Typography>
-                            )}
-                            {variant.publisherName && (
-                                <Typography><strong>NXB:</strong> {variant.publisherName}</Typography>
-                            )}
-                            {variant.coverTypeName && (
-                                <Typography><strong>Loại bìa:</strong> {variant.coverTypeName}</Typography>
-                            )}
-                            {variant.paperQualityName && (
-                                <Typography><strong>Chất lượng giấy:</strong> {variant.paperQualityName}</Typography>
-                            )}
-                            <Typography>
-                                <strong>Trạng thái:</strong>{' '}
-                                {variant.availableCopies > 0
-                                    ? `Còn ${variant.availableCopies} bản`
-                                    : 'Hết sách'}
-                            </Typography>
-                        </Box>
+                        {variant && (
+                            <Box sx={{ lineHeight: 1.8 }}>
+                                {variant.publicationYear && (
+                                    <Typography><strong>Năm xuất bản:</strong> {variant.publicationYear}</Typography>
+                                )}
+                                {variant.isbn && (
+                                    <Typography><strong>ISBN:</strong> {variant.isbn}</Typography>
+                                )}
+                                {variant.publisherName && (
+                                    <Typography><strong>NXB:</strong> {variant.publisherName}</Typography>
+                                )}
+                                {variant.coverTypeName && (
+                                    <Typography><strong>Loại bìa:</strong> {variant.coverTypeName}</Typography>
+                                )}
+                                {variant.paperQualityName && (
+                                    <Typography><strong>Chất lượng giấy:</strong> {variant.paperQualityName}</Typography>
+                                )}
+                                {typeof variant.availableCopies === 'number' && (
+                                    <Typography>
+                                        <strong>Trạng thái:</strong>{' '}
+                                        {variant.availableCopies > 0
+                                            ? `Còn ${variant.availableCopies} bản`
+                                            : 'Hết sách'}
+                                    </Typography>
+                                )}
+                            </Box>
+                        )}
+
 
                         <Box sx={{ mt: 4 }}>
                             <Button
                                 variant="contained"
                                 color="primary"
-                                disabled={variant.availableCopies === 0}
+                                disabled={!variant || variant.availableCopies === 0}
+
                                 sx={{ mr: 2 }}
                             >
                                 Mượn sách

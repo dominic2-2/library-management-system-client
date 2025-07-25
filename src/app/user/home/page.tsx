@@ -26,8 +26,12 @@ export default function HomePage() {
     const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
 
     useEffect(() => {
-        getHomepageBooks().then(setBooks)
-    }, [])
+        getHomepageBooks().then((res) => {
+            console.log('Books từ API:', res);
+            setBooks(res);
+        });
+    }, []);
+
 
     const filteredBooks = books.filter((book) => {
         const matchesSearch = book.title.toLowerCase().includes(search.toLowerCase())

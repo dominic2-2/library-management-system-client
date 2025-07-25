@@ -9,6 +9,7 @@ import { AuthProvider } from '@/providers/AuthProvider';
 import ConditionalLayout from '@/components/layout/ConditionalLayout';
 import { Toaster } from 'react-hot-toast'; // ✅ Import Toaster
 import "./globals.css";
+import QueryProvider from '@/providers/QueryProvider';
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -33,12 +34,15 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${geistSans.variable} ${geistMono.variable}`}>
       <body>
-        <AuthProvider>
-          <ConditionalLayout>
-            {children}
-          </ConditionalLayout>
-        </AuthProvider>
-        
+        <QueryProvider>
+          <AuthProvider>
+            <ConditionalLayout>
+              {children}
+            </ConditionalLayout>
+          </AuthProvider>
+        </QueryProvider>
+
+
         {/* ✅ Toast Provider với custom styling */}
         <Toaster
           position="top-right"
@@ -61,7 +65,7 @@ export default function RootLayout({
               boxShadow: '0 8px 32px rgba(0, 0, 0, 0.12)',
               border: '1px solid rgba(255, 255, 255, 0.1)',
             },
-            
+
             // Success toast styling
             success: {
               duration: 3000,
@@ -74,7 +78,7 @@ export default function RootLayout({
                 secondary: '#10B981',
               },
             },
-            
+
             // Error toast styling  
             error: {
               duration: 5000,
@@ -87,7 +91,7 @@ export default function RootLayout({
                 secondary: '#EF4444',
               },
             },
-            
+
             // Loading toast styling
             loading: {
               duration: Infinity,
@@ -100,7 +104,7 @@ export default function RootLayout({
                 secondary: '#3B82F6',
               },
             },
-            
+
             // Custom toast styling
             custom: {
               style: {

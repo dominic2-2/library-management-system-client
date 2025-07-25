@@ -1,5 +1,15 @@
 'use client';
 
+//the
+import { useNotificationList } from '@/features/notification/useNotificationList';
+import { markAsRead } from '@/services/notification.service';
+import { useQueryClient } from '@tanstack/react-query';
+import { Notifications as NotificationsIcon } from '@mui/icons-material';
+import Tooltip from '@mui/material/Tooltip';
+import Badge from '@mui/material/Badge';
+import { NotificationDto } from '@/types/notification';
+// ✅ Import necessary components and types
+
 import React, { useState } from 'react';
 import {
   AppBar,
@@ -25,8 +35,6 @@ import {
 } from '@mui/material';
 import {
   Menu as MenuIcon,
-  AccountCircle,
-  Settings,
   Lock,
   Logout,
   Person,
@@ -45,6 +53,45 @@ const Header: React.FC = () => {
   const [logoutDialog, setLogoutDialog] = useState(false);
   const [logoutLoading, setLogoutLoading] = useState(false);
   const open = Boolean(anchorEl);
+
+  //the
+  const [anchorNoti, setAnchorNoti] = useState<null | HTMLElement>(null);
+  const [selectedNoti, setSelectedNoti] = useState<NotificationDto | null>(null);
+  const queryClient = useQueryClient();
+  const { data: notifications = [] } = useNotificationList();
+  const unreadCount = notifications.filter(n => !n.readStatus).length;
+
+  const recentNoti = notifications.filter(n => {
+    const date = new Date(n.notificationDate);
+    return Date.now() - date.getTime() < 1000 * 60 * 60 * 24;
+  });
+  const olderNoti = notifications.filter(n => {
+    const date = new Date(n.notificationDate);
+    return Date.now() - date.getTime() >= 1000 * 60 * 60 * 24;
+  });
+  const handleOpenNotiMenu = (e: React.MouseEvent<HTMLElement>) => {
+    setAnchorNoti(e.currentTarget);
+  };
+
+  const handleCloseNotiMenu = () => {
+    setAnchorNoti(null);
+  };
+
+  const handleClickNotification = async (noti: NotificationDto) => {
+    try {
+      if (!noti.readStatus) {
+        await markAsRead(noti.notificationId);
+        queryClient.invalidateQueries({ queryKey: ['notifications'] });
+      }
+      setSelectedNoti(noti);
+      handleCloseNotiMenu();
+    } catch (error) {
+      console.error('Đánh dấu đã đọc thất bại:', error);
+    }
+  };
+
+
+
 
   if (loading) return null;
 
@@ -74,7 +121,7 @@ const Header: React.FC = () => {
 
   const handleLogoutConfirm = async () => {
     setLogoutLoading(true);
-    
+
     try {
       await logout(); // ✅ Now calls server API
     } catch (error) {
@@ -104,11 +151,11 @@ const Header: React.FC = () => {
   // Get role color
   const getRoleColor = (role?: string) => {
     switch (role?.toLowerCase()) {
-      case 'admin': 
+      case 'admin':
       case '1': return 'error';
-      case 'staff': 
+      case 'staff':
       case '2': return 'warning';
-      case 'user': 
+      case 'user':
       case '3': return 'info';
       default: return 'default';
     }
@@ -116,9 +163,9 @@ const Header: React.FC = () => {
 
   return (
     <>
-      <AppBar 
-        position="static" 
-        sx={{ 
+      <AppBar
+        position="static"
+        sx={{
           background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
           boxShadow: `0 4px 20px ${alpha(theme.palette.primary.main, 0.3)}`
         }}
@@ -126,10 +173,10 @@ const Header: React.FC = () => {
         <Toolbar sx={{ minHeight: 64 }}>
           {/* Logo / Brand */}
           <Box sx={{ display: 'flex', alignItems: 'center', mr: 3 }}>
-            <IconButton 
-              edge="start" 
-              color="inherit" 
-              sx={{ 
+            <IconButton
+              edge="start"
+              color="inherit"
+              sx={{
                 mr: 1,
                 background: alpha(theme.palette.common.white, 0.1),
                 '&:hover': {
@@ -139,9 +186,9 @@ const Header: React.FC = () => {
             >
               <MenuIcon />
             </IconButton>
-            <Typography 
-              variant="h5" 
-              sx={{ 
+            <Typography
+              variant="h5"
+              sx={{
                 fontWeight: 700,
                 cursor: 'pointer',
                 background: 'linear-gradient(45deg, #fff 30%, #e3f2fd 90%)',
@@ -153,7 +200,7 @@ const Header: React.FC = () => {
                   transform: 'scale(1.02)',
                   transition: 'transform 0.2s ease'
                 }
-              }} 
+              }}
               onClick={() => router.push('/')}
             >
               MyApp
@@ -177,8 +224,8 @@ const Header: React.FC = () => {
                       label={user.role}
                       size="small"
                       color={getRoleColor(user.role) as any}
-                      sx={{ 
-                        height: 20, 
+                      sx={{
+                        height: 20,
                         fontSize: '0.65rem',
                         fontWeight: 600
                       }}
@@ -186,6 +233,15 @@ const Header: React.FC = () => {
                   )}
                 </Box>
               </Box>
+
+              <Tooltip title="Thông báo">
+                <IconButton onClick={handleOpenNotiMenu}>
+                  <Badge badgeContent={unreadCount} color="error" invisible={unreadCount === 0}>
+                    <NotificationsIcon sx={{ color: 'white' }} />
+                  </Badge>
+                </IconButton>
+              </Tooltip>
+
 
               {/* User Avatar & Menu */}
               <IconButton
@@ -213,6 +269,86 @@ const Header: React.FC = () => {
                   {getUserInitials(user?.name)}
                 </Avatar>
               </IconButton>
+
+              <Menu
+                anchorEl={anchorNoti}
+                open={Boolean(anchorNoti)}
+                onClose={handleCloseNotiMenu}
+                PaperProps={{ sx: { width: 400, maxHeight: 480, px: 1, py: 1 } }}
+              >
+                <Box px={1.5} py={1}>
+                  <Typography variant="h6" fontWeight={600}>Thông báo</Typography>
+                  <Button
+                    size="small"
+                    onClick={() => {
+                      router.push('/notification');
+                      handleCloseNotiMenu();
+                    }}
+                    sx={{ textTransform: 'none', fontSize: '0.8rem', fontWeight: 500 }}
+                  >
+                    Xem tất cả
+                  </Button>
+
+                  <Typography variant="subtitle2" color="text.secondary" mt={1}>Gần đây</Typography>
+                  {recentNoti.length === 0 && <Typography variant="body2">Không có thông báo mới</Typography>}
+                  {recentNoti.map(n => (
+                    <MenuItem
+                      key={n.notificationId}
+                      onClick={() => handleClickNotification(n)}
+                      sx={{
+                        display: 'flex', flexDirection: 'column', alignItems: 'flex-start',
+                        bgcolor: n.readStatus ? 'grey.100' : 'rgba(25, 118, 210, 0.1)',
+                        mb: 1, borderRadius: 1.5, py: 1.5, px: 2, boxShadow: n.readStatus ? undefined : 2
+                      }}
+                    >
+                      <Typography variant="subtitle2" fontWeight={600}>{n.notificationType}</Typography>
+                      <Typography
+                        variant="body2"
+                        sx={{
+                          whiteSpace: 'normal',        // Cho phép xuống dòng
+                          wordBreak: 'break-word',     // Tự ngắt từ dài
+                          overflowWrap: 'break-word',  // Đảm bảo không tràn
+                          color: 'text.secondary'
+                        }}
+                      >
+                        {n.message || 'Không rõ nội dung'}
+                      </Typography>
+                      <Typography variant="caption" color="text.disabled" alignSelf="flex-end">
+                        {new Date(n.notificationDate).toLocaleString()}
+                      </Typography>
+                    </MenuItem>
+                  ))}
+
+                  <Divider sx={{ my: 1 }} />
+                  <Typography variant="subtitle2" color="text.secondary">Trước đó</Typography>
+                  {olderNoti.length === 0 && <Typography variant="body2">Không có thông báo cũ</Typography>}
+                  {olderNoti.map(n => (
+                    <MenuItem
+                      key={n.notificationId}
+                      onClick={() => handleClickNotification(n)}
+                      sx={{
+                        bgcolor: !n.readStatus ? 'rgba(25, 118, 210, 0.08)' : 'grey.100',
+                        borderRadius: 1, mb: 1, alignItems: 'flex-start',
+                        whiteSpace: 'normal', wordBreak: 'break-word', maxWidth: '100%',
+                        px: 2, py: 1.5
+                      }}
+                    >
+                      <ListItemText
+                        primary={<Typography fontWeight={600} fontSize="0.85rem" noWrap={false}>{n.notificationType}</Typography>}
+                        secondary={
+                          <>
+                            <Typography variant="body2" sx={{ wordBreak: 'break-word', mb: 0.5 }}>{n.message}</Typography>
+                            <Typography variant="caption" color="text.secondary">
+                              {new Date(n.notificationDate).toLocaleString()}
+                            </Typography>
+                          </>
+                        }
+                      />
+                    </MenuItem>
+                  ))}
+                </Box>
+              </Menu>
+
 
               {/* User Menu */}
               <Menu
@@ -258,7 +394,7 @@ const Header: React.FC = () => {
                   <Typography variant="body2" color="text.secondary">
                     {user?.email}
                   </Typography>
-                  
+
                   {/* ✅ Session Info */}
                   <Box sx={{ mt: 1, display: 'flex', flexDirection: 'column', gap: 0.5 }}>
                     <Chip
@@ -272,7 +408,7 @@ const Header: React.FC = () => {
                       🕐 Session: {getSessionDuration()}
                     </Typography>
                   </Box>
-                  
+
                   {user?.role && (
                     <Chip
                       label={user.role}
@@ -282,7 +418,7 @@ const Header: React.FC = () => {
                     />
                   )}
                 </Box>
-                
+
                 <Divider />
 
                 {/* Menu Items */}
@@ -323,8 +459,8 @@ const Header: React.FC = () => {
               </Menu>
             </Box>
           ) : (
-            <Button 
-              color="inherit" 
+            <Button
+              color="inherit"
               onClick={handleLogin}
               startIcon={<Login />}
               sx={{
@@ -350,8 +486,8 @@ const Header: React.FC = () => {
       </AppBar>
 
       {/* ✅ LOGOUT CONFIRMATION DIALOG */}
-      <Dialog 
-        open={logoutDialog} 
+      <Dialog
+        open={logoutDialog}
         onClose={handleLogoutCancel}
         maxWidth="sm"
         fullWidth
@@ -366,12 +502,12 @@ const Header: React.FC = () => {
           <Typography sx={{ mb: 2 }}>
             Bạn có chắc muốn đăng xuất khỏi thiết bị này?
           </Typography>
-          
+
           {/* Session Info */}
           {user && (
-            <Box sx={{ 
-              bgcolor: 'grey.50', 
-              p: 2, 
+            <Box sx={{
+              bgcolor: 'grey.50',
+              p: 2,
               borderRadius: 1,
               border: '1px solid #e0e0e0'
             }}>
@@ -397,7 +533,7 @@ const Header: React.FC = () => {
           <Button onClick={handleLogoutCancel} disabled={logoutLoading}>
             Hủy
           </Button>
-          <Button 
+          <Button
             onClick={handleLogoutConfirm}
             color="error"
             variant="contained"
@@ -408,6 +544,25 @@ const Header: React.FC = () => {
           </Button>
         </DialogActions>
       </Dialog>
+
+      <Dialog open={!!selectedNoti} onClose={() => setSelectedNoti(null)} maxWidth="sm" fullWidth>
+        <DialogTitle>Chi tiết thông báo</DialogTitle>
+        <DialogContent dividers>
+          <Typography variant="subtitle1" fontWeight={600}>
+            {selectedNoti?.notificationType}
+          </Typography>
+          <Typography variant="body2" color="text.secondary" mt={1}>
+            Ngày gửi: {selectedNoti && new Date(selectedNoti.notificationDate).toLocaleString()}
+          </Typography>
+          <Typography variant="body1" mt={2}>
+            {selectedNoti?.message || 'Không có nội dung chi tiết'}
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setSelectedNoti(null)}>Đóng</Button>
+        </DialogActions>
+      </Dialog>
+
     </>
   );
 };
