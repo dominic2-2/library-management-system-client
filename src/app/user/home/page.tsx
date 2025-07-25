@@ -13,6 +13,7 @@ import {
     CardContent,
     CardActions,
     Button,
+    Tooltip,
 } from '@mui/material'
 import Link from 'next/link'
 import { getHomepageBooks } from '@/services/book.service'
@@ -24,31 +25,36 @@ export default function HomePage() {
     const [books, setBooks] = useState<BookItem[]>([])
     const [search, setSearch] = useState('')
     const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
+    const [loading, setLoading] = useState(false)
 
     useEffect(() => {
-        getHomepageBooks().then((res) => {
-            console.log('Books từ API:', res);
-            setBooks(res);
-        });
-    }, []);
+        setLoading(true)
+        getHomepageBooks()
+            .then(setBooks)
+            .finally(() => setLoading(false))
+    }, [])
 
+    const normalize = (str: string) =>
+        str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
 
     const filteredBooks = books.filter((book) => {
-        const matchesSearch = book.title.toLowerCase().includes(search.toLowerCase())
-        const matchesCategory = selectedCategory ? book.category === selectedCategory : true
+        const title = normalize(book.title)
+        const category = normalize(book.category ?? '')
+        const searchStr = normalize(search)
+        const matchesSearch = title.includes(searchStr) || category.includes(searchStr)
+        const matchesCategory = selectedCategory ? category === normalize(selectedCategory) : true
         return matchesSearch && matchesCategory
     })
 
     return (
-        <Container maxWidth={false} sx={{ backgroundColor: '#f9f9f9', minHeight: '100vh', py: 4 }}>
+        <Container maxWidth="xl" sx={{ backgroundColor: '#f9f9f9', minHeight: '100vh', py: 4 }}>
             <Typography variant="h4" fontWeight="bold" gutterBottom>
-                Kho Sách
+                📚 Kho Sách
             </Typography>
 
-            {/* Tìm kiếm */}
             <TextField
                 fullWidth
-                placeholder="Tìm kiếm sách..."
+                placeholder="🔍 Tìm kiếm sách..."
                 variant="outlined"
                 size="small"
                 sx={{ mb: 2, backgroundColor: '#fff' }}
@@ -56,7 +62,6 @@ export default function HomePage() {
                 onChange={(e) => setSearch(e.target.value)}
             />
 
-            {/* Filter thể loại */}
             <Box sx={{ mb: 3, display: 'flex', gap: 1, flexWrap: 'wrap' }}>
                 {categories.map((cat) => (
                     <Chip
@@ -69,38 +74,74 @@ export default function HomePage() {
                 ))}
             </Box>
 
-            {/* Danh sách sách */}
-            <Grid container spacing={2}>
-                {filteredBooks.map((book) => (
-                    <Grid item xs={6} sm={4} md={3} lg={2} xl={2} key={book.bookId}>
-                        <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-                            <CardMedia
-                                component="img"
-                                sx={{ height: 480, objectFit: 'cover' }}
-                                image={book.image}
-                                alt={book.title}
-                            />
-
-                            <CardContent sx={{ flexGrow: 1, padding: 1.5 }}>
-                                <Typography variant="body2" fontWeight="bold" noWrap>
-                                    {book.title}
-                                </Typography>
-                            </CardContent>
-                            <CardActions sx={{ justifyContent: 'space-between', px: 1.5, pb: 1.5 }}>
-                                <Link href={`/user/book/${book.bookId}`} passHref>
-
-                                    <Button size="small" variant="outlined">Chi tiết</Button>
-                                </Link>
-                                {book.available && (
-                                    <Link href={`/reservation/user/create?bookId=${book.bookId}`} passHref>
-                                        <Button size="small" variant="contained" color="primary">Mượn</Button>
+            {loading ? (
+                <Typography>Đang tải dữ liệu...</Typography>
+            ) : filteredBooks.length === 0 ? (
+                <Typography>Không tìm thấy sách phù hợp.</Typography>
+            ) : (
+                <Grid container spacing={2}>
+                    {filteredBooks.map((book) => (
+                        console.log('📚 Book item:', book),
+                        <Grid item xs={6} sm={4} md={3} lg={2} xl={2} key={book.bookId}>
+                            <Card
+                                sx={{
+                                    height: '100%',
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    transition: 'transform 0.2s',
+                                    '&:hover': { transform: 'scale(1.02)', boxShadow: 4 },
+                                }}
+                            >
+                                <CardMedia
+                                    component="img"
+                                    sx={{ height: 220, objectFit: 'cover' }}
+                                    image={book.image || '/default-book.jpg'}
+                                    alt={book.title}
+                                />
+                                <CardContent sx={{ flexGrow: 1, p: 1.5 }}>
+                                    <Tooltip title={book.title}>
+                                        <Typography variant="subtitle1" fontWeight="bold" noWrap>
+                                            {book.title}
+                                        </Typography>
+                                    </Tooltip>
+                                    <Typography variant="body2" color="text.secondary" noWrap>
+                                        🖋 {book.authors?.join(', ') || 'Không rõ'}
+                                    </Typography>
+                                    <Typography variant="caption" color="text.secondary">
+                                        📂 {book.category || 'Không rõ thể loại'}
+                                    </Typography>
+                                    <Typography
+                                        variant="caption"
+                                        color={book.available ? 'green' : 'red'}
+                                        fontWeight="bold"
+                                        display="block"
+                                        mt={0.5}
+                                    >
+                                        {book.available ? '✅ Có sẵn' : '❌ Đang mượn'}
+                                    </Typography>
+                                </CardContent>
+                                <CardActions sx={{ justifyContent: 'space-between', px: 1.5, pb: 1.5 }}>
+                                    <Link href={`/user/book/${book.bookId}`} passHref>
+                                        <Button size="small" variant="outlined">
+                                            Chi tiết
+                                        </Button>
                                     </Link>
-                                )}
-                            </CardActions>
-                        </Card>
-                    </Grid>
-                ))}
-            </Grid>
+                                    <Link href={`/reservation/user/create?bookId=${book.bookId}`} passHref>
+                                        <Button
+                                            size="small"
+                                            variant="contained"
+                                            color="primary"
+                                            disabled={!book.available}
+                                        >
+                                            Mượn
+                                        </Button>
+                                    </Link>
+                                </CardActions>
+                            </Card>
+                        </Grid>
+                    ))}
+                </Grid>
+            )}
         </Container>
     )
 }

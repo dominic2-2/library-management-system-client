@@ -2,16 +2,24 @@
 import { ENV } from '@/config/env'
 import { BookDetailDto, BookItem } from '@/types/book'
 
-export async function getHomepageBooks(): Promise<BookItem[]> {
-    const res = await fetch(`${ENV.odataUrl}/Books/books`)
-    const data = await res.json()
-    const rawBooks = Array.isArray(data) ? data : (data?.$values || []);
 
-    return rawBooks.map((b: any) => ({
-        ...b,
-        authors: b.authors?.$values ?? [],
-    }))
+export async function getHomepageBooks(): Promise<BookItem[]> {
+    const url = `${ENV.odataUrl}/Books/books`
+    const res = await fetch(url)
+    const data = await res.json()
+    const rawBooks = Array.isArray(data) ? data : (data?.$values || [])
+
+    return rawBooks.map((b: any) => {
+        // Không cần .$values nữa
+        const authors = Array.isArray(b.authors) ? b.authors : []
+        return {
+            ...b,
+            authors,
+        }
+    })
 }
+
+
 
 export async function getBookDetail(bookId: number): Promise<BookDetailDto> {
     const res = await fetch(`${ENV.odataUrl}/books/${bookId}`);
