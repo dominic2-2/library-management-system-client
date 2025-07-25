@@ -30,7 +30,7 @@ export default function DashboardIndex() {
     };
 
     const targetRoute = roleRoutes[user.role] || '/profile';
-    
+
     console.log(`🚀 Redirecting ${user.role} to: ${targetRoute}`);
     router.replace(targetRoute);
 
