@@ -1,6 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  images: {
+    domains: ['res.cloudinary.com'],
+  },
   /* config options here */
   // Suppress hydration warnings in development (caused by browser extensions)
   reactStrictMode: true,

@@ -6,7 +6,10 @@ import '@fontsource/roboto/700.css';
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { AuthProvider } from '@/providers/AuthProvider';
+import ConditionalLayout from '@/components/layout/ConditionalLayout';
+import { Toaster } from 'react-hot-toast'; // ✅ Import Toaster
 import "./globals.css";
+import QueryProvider from '@/providers/QueryProvider';
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -29,11 +32,88 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body className={`${geistSans.variable} ${geistMono.variable}`}>
-        <AuthProvider>
-          {children}
-        </AuthProvider>
+    <html lang="en" className={`${geistSans.variable} ${geistMono.variable}`}>
+      <body>
+        <QueryProvider>
+          <AuthProvider>
+            <ConditionalLayout>
+              {children}
+            </ConditionalLayout>
+          </AuthProvider>
+        </QueryProvider>
+
+
+        {/* ✅ Toast Provider với custom styling */}
+        <Toaster
+          position="top-right"
+          reverseOrder={false}
+          gutter={8}
+          containerClassName=""
+          containerStyle={{}}
+          toastOptions={{
+            // Default options for all toasts
+            className: '',
+            duration: 4000,
+            style: {
+              background: '#363636',
+              color: '#fff',
+              borderRadius: '12px',
+              padding: '16px 20px',
+              fontSize: '14px',
+              fontWeight: '500',
+              maxWidth: '500px',
+              boxShadow: '0 8px 32px rgba(0, 0, 0, 0.12)',
+              border: '1px solid rgba(255, 255, 255, 0.1)',
+            },
+
+            // Success toast styling
+            success: {
+              duration: 3000,
+              style: {
+                background: 'linear-gradient(135deg, #10B981, #059669)',
+                color: '#fff',
+              },
+              iconTheme: {
+                primary: '#fff',
+                secondary: '#10B981',
+              },
+            },
+
+            // Error toast styling  
+            error: {
+              duration: 5000,
+              style: {
+                background: 'linear-gradient(135deg, #EF4444, #DC2626)',
+                color: '#fff',
+              },
+              iconTheme: {
+                primary: '#fff',
+                secondary: '#EF4444',
+              },
+            },
+
+            // Loading toast styling
+            loading: {
+              duration: Infinity,
+              style: {
+                background: 'linear-gradient(135deg, #3B82F6, #2563EB)',
+                color: '#fff',
+              },
+              iconTheme: {
+                primary: '#fff',
+                secondary: '#3B82F6',
+              },
+            },
+
+            // Custom toast styling
+            custom: {
+              style: {
+                background: 'linear-gradient(135deg, #8B5CF6, #7C3AED)',
+                color: '#fff',
+              },
+            },
+          }}
+        />
       </body>
     </html>
   );

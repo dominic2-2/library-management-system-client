@@ -1,12 +1,18 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  --primary: #1976d2;
+  --secondary: #9c27b0;
+  --accent: #2196f3;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
     --background: #0a0a0a;
     --foreground: #ededed;
+    --primary: #42a5f5;
+    --secondary: #ba68c8;
+    --accent: #64b5f6;
   }
 }
 
@@ -18,10 +24,47 @@ body {
 
 body {
   color: var(--foreground);
-  background: var(--background);
+  /* ✅ Beautiful gradient background */
+  background: linear-gradient(
+    135deg,
+    rgba(25, 118, 210, 0.08) 0%,
+    rgba(156, 39, 176, 0.05) 25%,
+    rgba(255, 255, 255, 0.95) 50%,
+    rgba(25, 118, 210, 0.03) 75%,
+    rgba(156, 39, 176, 0.08) 100%
+  );
   font-family: Arial, Helvetica, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  min-height: 100vh;
+  position: relative;
+}
+
+/* ✅ Decorative background overlay */
+body::before {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: radial-gradient(
+      circle at 20% 80%,
+      rgba(25, 118, 210, 0.1) 0%,
+      transparent 50%
+    ),
+    radial-gradient(
+      circle at 80% 20%,
+      rgba(156, 39, 176, 0.1) 0%,
+      transparent 50%
+    ),
+    radial-gradient(
+      circle at 40% 40%,
+      rgba(33, 150, 243, 0.05) 0%,
+      transparent 50%
+    );
+  pointer-events: none;
+  z-index: -1;
 }
 
 * {
@@ -35,15 +78,95 @@ a {
   text-decoration: none;
 }
 
+/* ✅ Smooth scrolling */
+html {
+  scroll-behavior: smooth;
+}
+
+/* ✅ Dark mode adjustments */
 @media (prefers-color-scheme: dark) {
   html {
     color-scheme: dark;
   }
+
+  body {
+    background: linear-gradient(
+      135deg,
+      rgba(15, 15, 15, 0.95) 0%,
+      rgba(25, 25, 35, 0.9) 25%,
+      rgba(20, 20, 25, 0.9) 50%,
+      rgba(25, 25, 35, 0.9) 75%,
+      rgba(15, 15, 15, 0.95) 100%
+    );
+  }
+
+  body::before {
+    background: radial-gradient(
+        circle at 20% 80%,
+        rgba(66, 165, 245, 0.15) 0%,
+        transparent 50%
+      ),
+      radial-gradient(
+        circle at 80% 20%,
+        rgba(186, 104, 200, 0.15) 0%,
+        transparent 50%
+      ),
+      radial-gradient(
+        circle at 40% 40%,
+        rgba(100, 181, 246, 0.08) 0%,
+        transparent 50%
+      );
+  }
+}
+/* ✅ Custom scrollbar for better UX */
+::-webkit-scrollbar {
+  width: 8px;
 }
 
-/* Suppress browser extension attributes that cause hydration mismatches */
-[data-bis_register],
-[data-bis_skin_checked],
-[data-__processed__] {
-  /* These attributes are added by browser extensions and should be ignored */
+::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(25, 118, 210, 0.3);
+  border-radius: 4px;
+  transition: background 0.3s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(25, 118, 210, 0.5);
+}
+
+/* ✅ Dark mode scrollbar */
+@media (prefers-color-scheme: dark) {
+  ::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.05);
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: rgba(66, 165, 245, 0.3);
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(66, 165, 245, 0.5);
+  }
+}
+
+/* ✅ Focus styles for accessibility */
+*:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+/* ✅ Selection styles */
+::selection {
+  background: rgba(25, 118, 210, 0.2);
+  color: var(--foreground);
+}
+
+@media (prefers-color-scheme: dark) {
+  ::selection {
+    background: rgba(66, 165, 245, 0.3);
+  }
 }
