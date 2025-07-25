@@ -67,6 +67,7 @@ export const BooksTable: React.FC<BooksTableProps> = ({
   const tableContainerRef = useRef<HTMLDivElement>(null);
 
   const handleView = (bookId: number): void => {
+    router.push(`/dashboard/admin/book/${bookId}`);
     if (onView) {
       onView(bookId);
     }

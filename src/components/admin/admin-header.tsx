@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import {
   AppBar,
   Toolbar,
@@ -37,7 +37,12 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
   pageTitle = "Admin Dashboard",
 }) => {
   const router = useRouter();
-  const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   const handleProfileMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorEl(event.currentTarget);
@@ -101,88 +106,94 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
 
         <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
           {/* Notifications */}
-          <IconButton
-            color="inherit"
-            sx={{
-              position: "relative",
-              "&:hover": {
-                bgcolor: "rgba(30, 58, 138, 0.08)",
-              },
-            }}
-          >
-            <Badge badgeContent={3} color="error">
-              <NotificationsIcon />
-            </Badge>
-          </IconButton>
-
-          {/* User Profile */}
-          <Button
-            onClick={handleProfileMenuOpen}
-            sx={{
-              display: "flex",
-              alignItems: "center",
-              gap: 1,
-              color: "inherit",
-              textTransform: "none",
-              "&:hover": {
-                bgcolor: "rgba(30, 58, 138, 0.08)",
-              },
-            }}
-          >
-            <Avatar
+          {isMounted && (
+            <IconButton
+              color="inherit"
               sx={{
-                width: 32,
-                height: 32,
-                bgcolor: "#1e3a8a",
-                fontSize: "0.875rem",
+                position: "relative",
+                "&:hover": {
+                  bgcolor: "rgba(30, 58, 138, 0.08)",
+                },
               }}
             >
-              {currentUser?.full_name?.charAt(0) || "A"}
-            </Avatar>
-            <Box sx={{ display: { xs: "none", sm: "block" } }}>
-              <Typography variant="body2" sx={{ fontWeight: "medium" }}>
-                {currentUser?.full_name || "Admin User"}
-              </Typography>
-              <Typography variant="caption" sx={{ color: "text.secondary" }}>
-                {currentUser?.username || "admin"}
-              </Typography>
-            </Box>
-          </Button>
+              <Badge badgeContent={3} color="error">
+                <NotificationsIcon />
+              </Badge>
+            </IconButton>
+          )}
+
+          {/* User Profile */}
+          {isMounted && (
+            <Button
+              onClick={handleProfileMenuOpen}
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                gap: 1,
+                color: "inherit",
+                textTransform: "none",
+                "&:hover": {
+                  bgcolor: "rgba(30, 58, 138, 0.08)",
+                },
+              }}
+            >
+              <Avatar
+                sx={{
+                  width: 32,
+                  height: 32,
+                  bgcolor: "#1e3a8a",
+                  fontSize: "0.875rem",
+                }}
+              >
+                {currentUser?.full_name?.charAt(0) || "A"}
+              </Avatar>
+              <Box sx={{ display: { xs: "none", sm: "block" } }}>
+                <Typography variant="body2" sx={{ fontWeight: "medium" }}>
+                  {currentUser?.full_name || "Admin User"}
+                </Typography>
+                <Typography variant="caption" sx={{ color: "text.secondary" }}>
+                  {currentUser?.username || "admin"}
+                </Typography>
+              </Box>
+            </Button>
+          )}
 
           {/* Profile Menu */}
-          <Menu
-            anchorEl={anchorEl}
-            open={isMenuOpen}
-            onClose={handleMenuClose}
-            anchorOrigin={{
-              vertical: "bottom",
-              horizontal: "right",
-            }}
-            transformOrigin={{
-              vertical: "top",
-              horizontal: "right",
-            }}
-            PaperProps={{
-              sx: {
-                mt: 1,
-                minWidth: 200,
-                boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
-              },
-            }}
-          >
-            <MenuItem onClick={handleProfile}>
-              <AccountCircle sx={{ mr: 2 }} />
-              Profile
-            </MenuItem>
-            <MenuItem onClick={handleSettings}>
-              <SettingsIcon sx={{ mr: 2 }} />
-              Settings
-            </MenuItem>
-            <MenuItem onClick={handleLogout} sx={{ color: "error.main" }}>
-              <LogoutIcon sx={{ mr: 2 }} />
-              Logout
-            </MenuItem>
-          </Menu>
+          {isMounted && (
+            <Menu
+              anchorEl={anchorEl}
+              open={isMenuOpen}
+              onClose={handleMenuClose}
+              anchorOrigin={{
+                vertical: "bottom",
+                horizontal: "right",
+              }}
+              transformOrigin={{
+                vertical: "top",
+                horizontal: "right",
+              }}
+              PaperProps={{
+                sx: {
+                  mt: 1,
+                  minWidth: 200,
+                  boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+                },
+              }}
+            >
+              <MenuItem onClick={handleProfile}>
+                <AccountCircle sx={{ mr: 2 }} />
+                Profile
+              </MenuItem>
+              <MenuItem onClick={handleSettings}>
+                <SettingsIcon sx={{ mr: 2 }} />
+                Settings
+              </MenuItem>
+              <MenuItem onClick={handleLogout} sx={{ color: "error.main" }}>
+                <LogoutIcon sx={{ mr: 2 }} />
+                Logout
+              </MenuItem>
+            </Menu>
+          )}
         </Box>
       </Toolbar>
     </AppBar>
