@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import {
-  Box, Paper, Typography, Grid, Button, TextField, Divider
+  Box, Paper, Typography, Grid, Button, TextField, Divider, Select, MenuItem, InputLabel, FormControl
 } from '@mui/material';
 import { ENV } from '@/config/env';
 
@@ -30,20 +30,43 @@ export default function MyReservationsPage() {
   const [queuePositions, setQueuePositions] = useState<Record<number, number>>({});
   const [search, setSearch] = useState('');
   const [userId, setUserId] = useState<number | null>(null);
+  const [sortStatus, setSortStatus] = useState<string>('All'); 
+  const [statusOptions, setStatusOptions] = useState<string[]>([]);
+
+  const STATUS_OPTIONS = [
+    { value: 'Pending', label: 'Chờ xử lý' },
+    { value: 'Available', label: 'Có thể mượn' },
+    { value: 'Fulfilled', label: 'Đã hoàn thành' },
+    { value: 'Cancelled', label: 'Đã hủy' },
+    { value: 'Expired', label: 'Hết hạn' },
+  ];
+  const statusMap: Record<string, string> = STATUS_OPTIONS.reduce(
+    (acc, cur) => ({ ...acc, [cur.value]: cur.label }),
+    {}
+  );
 
   const fetchReservations = async () => {
     setLoading(true);
     const token = localStorage.getItem('token');
     if (!userId) return;
-    const res = await fetch(`${ENV.apiUrl}/reservations/user/${userId}`, {
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-    });
-    if (res.ok) {
-      const data = await res.json();
-      setReservations(data);
-      for (const r of data) {
-        fetchQueuePosition(r.reservationId);
+    try {
+      const res = await fetch(`${ENV.apiUrl}/reservations/user/${userId}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setReservations(data);
+        // Lọc các loại trạng thái duy nhất
+        const uniqueStatuses = Array.from(new Set(data.map((r: any) => r.reservationStatus).filter(Boolean))) as string[];
+        setStatusOptions(uniqueStatuses);
+        for (const r of data) {
+          fetchQueuePosition(r.reservationId);
+        }
+      } else {
+        // setError('Không thể tải danh sách đặt trước.'); // Original code had this line commented out
       }
+    } catch (e) {
+      // setError('Lỗi khi tải dữ liệu.'); // Original code had this line commented out
     }
     setLoading(false);
   };
@@ -100,16 +123,25 @@ export default function MyReservationsPage() {
     window.location.href = `/reservation/user/${reservationId}`;
   };
 
-  const filteredReservations = !search
-    ? reservations
-    : reservations.filter((r) => {
-        const lower = search.toLowerCase();
-        return (
+  const filteredReservations = reservations
+    .filter((r) => {
+      const lower = search.toLowerCase();
+      return (
+        (!search ||
           (r.title && r.title.toLowerCase().includes(lower)) ||
           (r.authors && r.authors.join(', ').toLowerCase().includes(lower)) ||
-          (r.isbn && r.isbn.toLowerCase().includes(lower))
-        );
-      });
+          (r.isbn && r.isbn.toLowerCase().includes(lower))) &&
+          (sortStatus === 'All' || r.reservationStatus === sortStatus)
+      );
+    })
+    .sort((a, b) => {
+      // Nếu không chọn sort cụ thể, ưu tiên trạng thái Pending
+      if (!sortStatus) {
+        if (a.reservationStatus === 'Pending' && b.reservationStatus !== 'Pending') return -1;
+        if (a.reservationStatus !== 'Pending' && b.reservationStatus === 'Pending') return 1;
+      }
+      return 0;
+    });
 
   return (
     <Box sx={{ p: { xs: 2, sm: 4 }, maxWidth: '1200px', mx: 'auto' }}>
@@ -124,7 +156,15 @@ export default function MyReservationsPage() {
       >
         Danh sách đơn đặt trước
       </Typography>
-      <Box sx={{ mb: 4 }}>
+      <Box
+        sx={{
+          mb: 4,
+          display: 'flex',
+          flexDirection: { xs: 'column', sm: 'row' },
+          gap: 2,
+          alignItems: 'center',
+        }}
+      >
         <TextField
           label="Tìm kiếm (tên sách, tác giả, ISBN)"
           value={search}
@@ -151,6 +191,35 @@ export default function MyReservationsPage() {
             },
           }}
         />
+        <FormControl size="medium" sx={{ minWidth: 180 }}>
+          <InputLabel id="sort-status-label">Lọc theo trạng thái</InputLabel>
+          <Select
+            labelId="sort-status-label"
+            value={sortStatus ?? ''}
+            label="Lọc theo trạng thái"
+            onChange={(e) => setSortStatus(e.target.value)}
+            sx={{
+              borderRadius: '8px',
+              backgroundColor: '#f7faf9',
+              '& .MuiOutlinedInput-notchedOutline': {
+                borderColor: '#cfd8dc',
+              },
+              '&:hover .MuiOutlinedInput-notchedOutline': {
+                borderColor: '#2e7d32',
+              },
+              '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                borderColor: '#2e7d32',
+              },
+            }}
+          >
+            <MenuItem value="All">Tất cả</MenuItem>
+            {STATUS_OPTIONS.filter((opt) => statusOptions.includes(opt.value)).map((status) => (
+              <MenuItem key={status.value} value={status.value}>
+                {status.label}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
       </Box>
       {loading ? (
         <Typography sx={{ color: '#455a64', textAlign: 'center' }}>
@@ -222,7 +291,7 @@ export default function MyReservationsPage() {
               </Grid>
               <Grid item xs={12} sm={6}>
                 <Typography sx={{ color: '#455a64' }}>
-                  <b>Trạng thái:</b> {r.reservationStatus || 'Không rõ'}
+                  <b>Trạng thái:</b> {statusMap[r.reservationStatus ?? ''] || 'Không rõ'}
                 </Typography>
               </Grid>
               <Grid item xs={12} sm={6}>
