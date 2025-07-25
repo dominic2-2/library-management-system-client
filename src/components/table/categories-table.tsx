@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useRef, useCallback } from "react";
 import {
   Table,
   TableBody,
@@ -18,20 +18,20 @@ import {
   Tooltip,
   Chip,
 } from "@mui/material";
-import { Edit, Visibility, Category } from "@mui/icons-material";
-
-export interface Category {
-  category_id: number;
-  category_name: string;
-  description?: string;
-  book_count?: number;
-}
+import {
+  Edit,
+  Visibility,
+  Delete,
+  Category as CategoryIcon,
+} from "@mui/icons-material";
+import { Category } from "@/types/category";
 
 export interface CategoriesTableProps {
   data: Category[];
   loading?: boolean;
   onAdd?: () => void;
   onEdit?: (category: Category) => void;
+  onDelete?: (category: Category) => void;
   onView?: (id: number) => void;
   page?: number;
   rowsPerPage?: number;
@@ -39,6 +39,12 @@ export interface CategoriesTableProps {
   onPageChange?: (event: unknown, newPage: number) => void;
   onRowsPerPageChange?: (event: React.ChangeEvent<HTMLInputElement>) => void;
   showActions?: boolean;
+  searchInput?: React.ReactNode;
+  // Infinite scroll props
+  hasNextPage?: boolean;
+  onLoadMore?: () => void;
+  loadingMore?: boolean;
+  enableInfiniteScroll?: boolean;
 }
 
 export const CategoriesTable: React.FC<CategoriesTableProps> = ({
@@ -46,6 +52,7 @@ export const CategoriesTable: React.FC<CategoriesTableProps> = ({
   loading = false,
   onAdd,
   onEdit,
+  onDelete,
   onView,
   page = 0,
   rowsPerPage = 10,
@@ -53,7 +60,15 @@ export const CategoriesTable: React.FC<CategoriesTableProps> = ({
   onPageChange,
   onRowsPerPageChange,
   showActions = true,
+  searchInput,
+  hasNextPage = false,
+  onLoadMore,
+  loadingMore = false,
+  enableInfiniteScroll = true,
 }) => {
+  const loadMoreRef = useRef<HTMLTableRowElement>(null);
+  const tableContainerRef = useRef<HTMLDivElement>(null);
+
   const handleChangePage = (event: unknown, newPage: number): void => {
     if (onPageChange) {
       onPageChange(event, newPage);
@@ -74,13 +89,54 @@ export const CategoriesTable: React.FC<CategoriesTableProps> = ({
     }
   };
 
+  const handleDelete = (category: Category): void => {
+    if (onDelete) {
+      onDelete(category);
+    }
+  };
+
   const handleView = (id: number): void => {
     if (onView) {
       onView(id);
     }
   };
 
-  if (loading) {
+  // Infinite scroll logic
+  const handleLoadMore = useCallback(() => {
+    if (hasNextPage && !loadingMore && onLoadMore) {
+      onLoadMore();
+    }
+  }, [hasNextPage, loadingMore, onLoadMore]);
+
+  useEffect(() => {
+    if (!enableInfiniteScroll) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const target = entries[0];
+        if (target.isIntersecting) {
+          handleLoadMore();
+        }
+      },
+      {
+        threshold: 0.1,
+        rootMargin: "20px",
+      }
+    );
+
+    const currentRef = loadMoreRef.current;
+    if (currentRef) {
+      observer.observe(currentRef);
+    }
+
+    return () => {
+      if (currentRef) {
+        observer.unobserve(currentRef);
+      }
+    };
+  }, [handleLoadMore, enableInfiniteScroll]);
+
+  if (loading && data.length === 0) {
     return (
       <Box
         display="flex"
@@ -107,13 +163,21 @@ export const CategoriesTable: React.FC<CategoriesTableProps> = ({
         }}
       >
         <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-          <Category sx={{ color: "#1976d2" }} />
+          <CategoryIcon sx={{ color: "#1976d2" }} />
           <Typography
             variant="h6"
             sx={{ fontWeight: "bold", color: "#1976d2" }}
           >
             Categories Management
           </Typography>
+          {totalCount > 0 && (
+            <Chip
+              label={`Total: ${totalCount}`}
+              size="small"
+              color="primary"
+              variant="outlined"
+            />
+          )}
         </Box>
         {onAdd && (
           <Button
@@ -132,7 +196,24 @@ export const CategoriesTable: React.FC<CategoriesTableProps> = ({
         )}
       </Box>
 
-      <TableContainer>
+      {/* Search Input Section */}
+      {searchInput && searchInput}
+
+      <TableContainer
+        ref={tableContainerRef}
+        sx={{
+          maxHeight: enableInfiniteScroll ? 600 : "none",
+          overflowY: enableInfiniteScroll ? "auto" : "visible",
+          // Hide scrollbar
+          "&::-webkit-scrollbar": {
+            display: "none",
+          },
+          // Hide scrollbar for Firefox
+          scrollbarWidth: "none",
+          // Ensure scrolling still works
+          msOverflowStyle: "none",
+        }}
+      >
         <Table stickyHeader>
           <TableHead>
             <TableRow>
@@ -141,9 +222,6 @@ export const CategoriesTable: React.FC<CategoriesTableProps> = ({
               </TableCell>
               <TableCell sx={{ fontWeight: "bold", bgcolor: "#e3f2fd" }}>
                 Category Name
-              </TableCell>
-              <TableCell sx={{ fontWeight: "bold", bgcolor: "#e3f2fd" }}>
-                Description
               </TableCell>
               <TableCell sx={{ fontWeight: "bold", bgcolor: "#e3f2fd" }}>
                 Books Count
@@ -158,7 +236,7 @@ export const CategoriesTable: React.FC<CategoriesTableProps> = ({
           <TableBody>
             {data.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={showActions ? 5 : 4} align="center">
+                <TableCell colSpan={showActions ? 4 : 3} align="center">
                   <Typography color="textSecondary">
                     No categories found
                   </Typography>
@@ -167,39 +245,25 @@ export const CategoriesTable: React.FC<CategoriesTableProps> = ({
             ) : (
               data.map((category) => (
                 <TableRow
-                  key={category.category_id}
+                  key={category.categoryId}
                   hover
                   sx={{ "&:last-child td, &:last-child th": { border: 0 } }}
                 >
                   <TableCell component="th" scope="row">
                     <Typography variant="body2" sx={{ fontWeight: "medium" }}>
-                      {category.category_id}
+                      {category.categoryId}
                     </Typography>
                   </TableCell>
                   <TableCell>
                     <Typography variant="body2" sx={{ fontWeight: "500" }}>
-                      {category.category_name}
-                    </Typography>
-                  </TableCell>
-                  <TableCell>
-                    <Typography
-                      variant="body2"
-                      color="textSecondary"
-                      sx={{
-                        maxWidth: 200,
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                        whiteSpace: "nowrap",
-                      }}
-                    >
-                      {category.description || "No description"}
+                      {category.categoryName}
                     </Typography>
                   </TableCell>
                   <TableCell>
                     <Chip
-                      label={category.book_count || 0}
+                      label={category.bookCount || 0}
                       color={
-                        category.book_count && category.book_count > 0
+                        category.bookCount && category.bookCount > 0
                           ? "primary"
                           : "default"
                       }
@@ -214,7 +278,7 @@ export const CategoriesTable: React.FC<CategoriesTableProps> = ({
                             <IconButton
                               size="small"
                               color="info"
-                              onClick={() => handleView(category.category_id)}
+                              onClick={() => handleView(category.categoryId)}
                               sx={{
                                 bgcolor: "#17a2b8",
                                 color: "white",
@@ -245,17 +309,76 @@ export const CategoriesTable: React.FC<CategoriesTableProps> = ({
                             </IconButton>
                           </Tooltip>
                         )}
+                        {onDelete && (
+                          <Tooltip title="Delete Category">
+                            <IconButton
+                              size="small"
+                              color="error"
+                              onClick={() => handleDelete(category)}
+                              sx={{
+                                bgcolor: "#f44336",
+                                color: "white",
+                                "&:hover": {
+                                  bgcolor: "#d32f2f",
+                                },
+                              }}
+                            >
+                              <Delete fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                        )}
                       </Box>
                     </TableCell>
                   )}
                 </TableRow>
               ))
             )}
+
+            {/* Infinite scroll trigger element */}
+            {enableInfiniteScroll && hasNextPage && (
+              <TableRow ref={loadMoreRef}>
+                <TableCell colSpan={showActions ? 4 : 3} align="center">
+                  <Box py={2}>
+                    {loadingMore ? (
+                      <Box
+                        display="flex"
+                        justifyContent="center"
+                        alignItems="center"
+                        gap={1}
+                      >
+                        <CircularProgress size={20} />
+                        <Typography variant="body2" color="textSecondary">
+                          Loading more categories...
+                        </Typography>
+                      </Box>
+                    ) : (
+                      <Typography variant="body2" color="textSecondary">
+                        Scroll down to load more
+                      </Typography>
+                    )}
+                  </Box>
+                </TableCell>
+              </TableRow>
+            )}
+
+            {/* End of data indicator */}
+            {enableInfiniteScroll && !hasNextPage && data.length > 0 && (
+              <TableRow>
+                <TableCell colSpan={showActions ? 4 : 3} align="center">
+                  <Box py={2}>
+                    <Typography variant="body2" color="textSecondary">
+                      No more categories to load
+                    </Typography>
+                  </Box>
+                </TableCell>
+              </TableRow>
+            )}
           </TableBody>
         </Table>
       </TableContainer>
 
-      {onPageChange && onRowsPerPageChange && (
+      {/* Traditional pagination - hidden when infinite scroll is enabled */}
+      {!enableInfiniteScroll && onPageChange && onRowsPerPageChange && (
         <TablePagination
           rowsPerPageOptions={[5, 10, 25, 50]}
           component="div"

@@ -17,25 +17,21 @@ import {
   IconButton,
   Tooltip,
   Chip,
-  Avatar,
 } from "@mui/material";
 import {
   Edit,
   Visibility,
-  Business,
-  LocationOn,
-  Phone,
-  Language,
   Delete,
+  LibraryBooks as EditionIcon,
 } from "@mui/icons-material";
-import { Publisher } from "@/types/publisher";
+import { Edition } from "@/types/edition";
 
-export interface PublishersTableProps {
-  data: Publisher[];
+export interface EditionsTableProps {
+  data: Edition[];
   loading?: boolean;
   onAdd?: () => void;
-  onEdit?: (publisher: Publisher) => void;
-  onDelete?: (publisher: Publisher) => void;
+  onEdit?: (edition: Edition) => void;
+  onDelete?: (edition: Edition) => void;
   onView?: (id: number) => void;
   page?: number;
   rowsPerPage?: number;
@@ -51,7 +47,7 @@ export interface PublishersTableProps {
   enableInfiniteScroll?: boolean;
 }
 
-export const PublishersTable: React.FC<PublishersTableProps> = ({
+export const EditionsTable: React.FC<EditionsTableProps> = ({
   data,
   loading = false,
   onAdd,
@@ -72,6 +68,7 @@ export const PublishersTable: React.FC<PublishersTableProps> = ({
 }) => {
   const loadMoreRef = useRef<HTMLTableRowElement>(null);
   const tableContainerRef = useRef<HTMLDivElement>(null);
+
   const handleChangePage = (event: unknown, newPage: number): void => {
     if (onPageChange) {
       onPageChange(event, newPage);
@@ -86,15 +83,15 @@ export const PublishersTable: React.FC<PublishersTableProps> = ({
     }
   };
 
-  const handleEdit = (publisher: Publisher): void => {
+  const handleEdit = (edition: Edition): void => {
     if (onEdit) {
-      onEdit(publisher);
+      onEdit(edition);
     }
   };
 
-  const handleDelete = (publisher: Publisher): void => {
+  const handleDelete = (edition: Edition): void => {
     if (onDelete) {
-      onDelete(publisher);
+      onDelete(edition);
     }
   };
 
@@ -139,15 +136,6 @@ export const PublishersTable: React.FC<PublishersTableProps> = ({
     };
   }, [handleLoadMore, enableInfiniteScroll]);
 
-  const getPublisherInitials = (name: string): string => {
-    return name
-      .split(" ")
-      .map((word) => word.charAt(0))
-      .join("")
-      .substring(0, 2)
-      .toUpperCase();
-  };
-
   if (loading && data.length === 0) {
     return (
       <Box
@@ -175,12 +163,12 @@ export const PublishersTable: React.FC<PublishersTableProps> = ({
         }}
       >
         <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-          <Business sx={{ color: "#4caf50" }} />
+          <EditionIcon sx={{ color: "#1976d2" }} />
           <Typography
             variant="h6"
-            sx={{ fontWeight: "bold", color: "#4caf50" }}
+            sx={{ fontWeight: "bold", color: "#1976d2" }}
           >
-            Publishers Management
+            Editions Management
           </Typography>
           {totalCount > 0 && (
             <Chip
@@ -194,15 +182,16 @@ export const PublishersTable: React.FC<PublishersTableProps> = ({
         {onAdd && (
           <Button
             variant="contained"
+            color="primary"
             onClick={onAdd}
             sx={{
-              bgcolor: "#4caf50",
+              bgcolor: "#1976d2",
               "&:hover": {
-                bgcolor: "#388e3c",
+                bgcolor: "#1565c0",
               },
             }}
           >
-            Add Publisher
+            Add Edition
           </Button>
         )}
       </Box>
@@ -228,23 +217,17 @@ export const PublishersTable: React.FC<PublishersTableProps> = ({
         <Table stickyHeader>
           <TableHead>
             <TableRow>
-              <TableCell sx={{ fontWeight: "bold", bgcolor: "#e8f5e8" }}>
+              <TableCell sx={{ fontWeight: "bold", bgcolor: "#e3f2fd" }}>
                 ID
               </TableCell>
-              <TableCell sx={{ fontWeight: "bold", bgcolor: "#e8f5e8" }}>
-                Publisher
+              <TableCell sx={{ fontWeight: "bold", bgcolor: "#e3f2fd" }}>
+                Edition Name
               </TableCell>
-              <TableCell sx={{ fontWeight: "bold", bgcolor: "#e8f5e8" }}>
-                Contact Info
-              </TableCell>
-              <TableCell sx={{ fontWeight: "bold", bgcolor: "#e8f5e8" }}>
-                Established
-              </TableCell>
-              <TableCell sx={{ fontWeight: "bold", bgcolor: "#e8f5e8" }}>
-                Books Published
+              <TableCell sx={{ fontWeight: "bold", bgcolor: "#e3f2fd" }}>
+                Books Count
               </TableCell>
               {showActions && (
-                <TableCell sx={{ fontWeight: "bold", bgcolor: "#e8f5e8" }}>
+                <TableCell sx={{ fontWeight: "bold", bgcolor: "#e3f2fd" }}>
                   Actions
                 </TableCell>
               )}
@@ -253,150 +236,35 @@ export const PublishersTable: React.FC<PublishersTableProps> = ({
           <TableBody>
             {data.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={showActions ? 6 : 5} align="center">
+                <TableCell colSpan={showActions ? 4 : 3} align="center">
                   <Typography color="textSecondary">
-                    No publishers found
+                    No editions found
                   </Typography>
                 </TableCell>
               </TableRow>
             ) : (
-              data.map((publisher) => (
+              data.map((edition) => (
                 <TableRow
-                  key={publisher.publisherId}
+                  key={edition.editionId}
                   hover
                   sx={{ "&:last-child td, &:last-child th": { border: 0 } }}
                 >
                   <TableCell component="th" scope="row">
                     <Typography variant="body2" sx={{ fontWeight: "medium" }}>
-                      {publisher.publisherId}
+                      {edition.editionId}
                     </Typography>
                   </TableCell>
                   <TableCell>
-                    <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-                      <Avatar
-                        sx={{
-                          bgcolor: "#4caf50",
-                          width: 40,
-                          height: 40,
-                          fontSize: "0.875rem",
-                        }}
-                      >
-                        {getPublisherInitials(publisher.publisherName)}
-                      </Avatar>
-                      <Box>
-                        <Typography variant="body2" sx={{ fontWeight: "500" }}>
-                          {publisher.publisherName}
-                        </Typography>
-                      </Box>
-                    </Box>
-                  </TableCell>
-                  <TableCell sx={{ maxWidth: 250 }}>
-                    <Box>
-                      {publisher.address && (
-                        <Box
-                          sx={{
-                            display: "flex",
-                            alignItems: "flex-start",
-                            gap: 0.5,
-                            mb: 0.5,
-                          }}
-                        >
-                          <LocationOn
-                            fontSize="small"
-                            color="action"
-                            sx={{ mt: 0.1, flexShrink: 0 }}
-                          />
-                          <Typography
-                            variant="caption"
-                            color="textSecondary"
-                            sx={{
-                              wordBreak: "break-word",
-                              whiteSpace: "normal",
-                              lineHeight: 1.3,
-                              overflow: "hidden",
-                              display: "-webkit-box",
-                              WebkitLineClamp: 3,
-                              WebkitBoxOrient: "vertical",
-                            }}
-                          >
-                            {publisher.address}
-                          </Typography>
-                        </Box>
-                      )}
-                      {publisher.phone && (
-                        <Box
-                          sx={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: 0.5,
-                            mb: 0.5,
-                          }}
-                        >
-                          <Phone fontSize="small" color="action" />
-                          <Typography variant="caption" color="textSecondary">
-                            {publisher.phone}
-                          </Typography>
-                        </Box>
-                      )}
-                      {publisher.website && (
-                        <Box
-                          sx={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: 0.5,
-                          }}
-                        >
-                          <Tooltip title={`Visit ${publisher.website}`}>
-                            <IconButton
-                              size="small"
-                              component="a"
-                              href={publisher.website}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              sx={{
-                                p: 0,
-                                "&:hover": {
-                                  backgroundColor: "action.hover",
-                                  color: "primary.main",
-                                },
-                              }}
-                            >
-                              <Language fontSize="small" />
-                            </IconButton>
-                          </Tooltip>
-                          <Typography
-                            variant="caption"
-                            color="textSecondary"
-                            component="a"
-                            href={publisher.website}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            sx={{
-                              textDecoration: "none",
-                              wordBreak: "break-all",
-                              "&:hover": {
-                                color: "primary.main",
-                                textDecoration: "underline",
-                              },
-                            }}
-                          >
-                            {publisher.website}
-                          </Typography>
-                        </Box>
-                      )}
-                    </Box>
-                  </TableCell>
-                  <TableCell>
-                    <Typography variant="body2" color="textSecondary">
-                      {publisher.establishedYear || "Unknown"}
+                    <Typography variant="body2" sx={{ fontWeight: "500" }}>
+                      {edition.editionName}
                     </Typography>
                   </TableCell>
                   <TableCell>
                     <Chip
-                      label={publisher.bookCount || 0}
+                      label={edition.bookCount || 0}
                       color={
-                        publisher.bookCount && publisher.bookCount > 0
-                          ? "success"
+                        edition.bookCount && edition.bookCount > 0
+                          ? "primary"
                           : "default"
                       }
                       size="small"
@@ -410,7 +278,7 @@ export const PublishersTable: React.FC<PublishersTableProps> = ({
                             <IconButton
                               size="small"
                               color="info"
-                              onClick={() => handleView(publisher.publisherId)}
+                              onClick={() => handleView(edition.editionId)}
                               sx={{
                                 bgcolor: "#17a2b8",
                                 color: "white",
@@ -424,11 +292,11 @@ export const PublishersTable: React.FC<PublishersTableProps> = ({
                           </Tooltip>
                         )}
                         {onEdit && (
-                          <Tooltip title="Edit Publisher">
+                          <Tooltip title="Edit Edition">
                             <IconButton
                               size="small"
                               color="warning"
-                              onClick={() => handleEdit(publisher)}
+                              onClick={() => handleEdit(edition)}
                               sx={{
                                 bgcolor: "#ff9800",
                                 color: "white",
@@ -442,11 +310,11 @@ export const PublishersTable: React.FC<PublishersTableProps> = ({
                           </Tooltip>
                         )}
                         {onDelete && (
-                          <Tooltip title="Delete Publisher">
+                          <Tooltip title="Delete Edition">
                             <IconButton
                               size="small"
                               color="error"
-                              onClick={() => handleDelete(publisher)}
+                              onClick={() => handleDelete(edition)}
                               sx={{
                                 bgcolor: "#f44336",
                                 color: "white",
@@ -469,7 +337,7 @@ export const PublishersTable: React.FC<PublishersTableProps> = ({
             {/* Infinite scroll trigger element */}
             {enableInfiniteScroll && hasNextPage && (
               <TableRow ref={loadMoreRef}>
-                <TableCell colSpan={showActions ? 6 : 5} align="center">
+                <TableCell colSpan={showActions ? 4 : 3} align="center">
                   <Box py={2}>
                     {loadingMore ? (
                       <Box
@@ -480,7 +348,7 @@ export const PublishersTable: React.FC<PublishersTableProps> = ({
                       >
                         <CircularProgress size={20} />
                         <Typography variant="body2" color="textSecondary">
-                          Loading more publishers...
+                          Loading more editions...
                         </Typography>
                       </Box>
                     ) : (
@@ -496,10 +364,10 @@ export const PublishersTable: React.FC<PublishersTableProps> = ({
             {/* End of data indicator */}
             {enableInfiniteScroll && !hasNextPage && data.length > 0 && (
               <TableRow>
-                <TableCell colSpan={showActions ? 6 : 5} align="center">
+                <TableCell colSpan={showActions ? 4 : 3} align="center">
                   <Box py={2}>
                     <Typography variant="body2" color="textSecondary">
-                      No more publishers to load
+                      No more editions to load
                     </Typography>
                   </Box>
                 </TableCell>

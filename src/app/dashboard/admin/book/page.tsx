@@ -17,7 +17,11 @@ import { BooksTable } from "@/components/table/books-table";
 import { AddBookForm } from "@/components/form/add-book-form";
 import { BookWithDetails } from "@/types/book";
 import { ENV } from "@/config/env";
-import { fetchBooks, testApiConnection } from "@/services/book-service";
+import {
+  fetchBooks,
+  testApiConnection,
+  createBookWithImage,
+} from "@/services/book-service";
 
 export default function BookManagePage(): JSX.Element {
   const [books, setBooks] = useState<BookWithDetails[]>([]);
@@ -60,6 +64,7 @@ export default function BookManagePage(): JSX.Element {
         setBooks(booksData.books);
         setCurrentOffset(BOOKS_PER_PAGE);
         setHasMoreData(booksData.books.length === BOOKS_PER_PAGE);
+        console.log("🚀 ~ BookManagePage ~ books:", books);
       } catch (error) {
         console.error("Error fetching initial books:", error);
         setBooks([]);
@@ -91,6 +96,7 @@ export default function BookManagePage(): JSX.Element {
         setBooks((prevBooks) => [...prevBooks, ...booksData.books]);
         setCurrentOffset((prev) => prev + booksData.books.length);
         setHasMoreData(booksData.books.length === BOOKS_PER_PAGE);
+        console.log("🚀 ~ BookManagePage ~ books:", books);
       }
     } catch (error) {
       console.error("Error loading more books:", error);
@@ -159,22 +165,29 @@ export default function BookManagePage(): JSX.Element {
     // Navigate to book edit page
   };
 
-  const handleAddBook = async (bookData: {
-    title: string;
-    language: string;
-    bookStatus: string;
-    description: string;
-    categoryId: number;
-    authors: { authorName: string; bio?: string }[];
-  }): Promise<void> => {
+  const handleAddBook = async (
+    bookData: {
+      title: string;
+      language: string;
+      bookStatus: string;
+      description: string;
+      categoryId: number;
+      authors: { authorName: string; bio?: string }[];
+    },
+    coverImage?: File
+  ): Promise<void> => {
     try {
       setAddingBook(true);
       console.log("Adding book:", bookData);
 
-      // TODO: Implement createBook API call
-      // await createBook(bookData);
+      if (coverImage) {
+        console.log("Cover image:", coverImage.name, coverImage.size);
+      }
 
-      // For now, just close the dialog
+      const createdBook = await createBookWithImage(bookData, coverImage);
+      console.log("Created book:", createdBook);
+
+      // Close the dialog after successful creation
       setAddBookOpen(false);
 
       // Refresh books list

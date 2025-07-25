@@ -16,12 +16,6 @@ export interface User {
   is_active: boolean;
 }
 
-export interface Category {
-  category_id: number;
-  category_name: string;
-  book_count: number;
-}
-
 export interface Author {
   author_id: number;
   author_name: string;
@@ -45,11 +39,6 @@ export interface Publisher {
 export interface Edition {
   edition_id: number;
   edition_name: string;
-}
-
-export interface CoverType {
-  cover_type_id: number;
-  cover_type_name: string;
 }
 
 export interface PaperQuality {
@@ -92,6 +81,7 @@ export interface BookWithDetails {
   language?: string;
   book_status: "Active" | "Inactive" | "Deleted";
   description?: string;
+  coverImg?: string;
 
   // Category info
   category_id: number;

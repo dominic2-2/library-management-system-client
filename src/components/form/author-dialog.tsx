@@ -2,23 +2,23 @@
 
 import React, { useState, useRef } from "react";
 import {
+  Dialog,
+  DialogContent,
   Box,
   TextField,
   Button,
   Typography,
-  Paper,
   Avatar,
   InputAdornment,
   CircularProgress,
-  Container,
-  Stack,
+  IconButton,
 } from "@mui/material";
 import {
   Person as PersonIcon,
   Category as CategoryIcon,
   Description as DescriptionIcon,
   PhotoCamera as PhotoCameraIcon,
-  ArrowBack as ArrowBackIcon,
+  Close as CloseIcon,
 } from "@mui/icons-material";
 import { Author } from "@/types/author";
 import { CountryDropdown } from "@/components/form/country-dropdown";
@@ -30,17 +30,19 @@ export interface AuthorFormData {
   genre: string;
 }
 
-interface AuthorFormProps {
+interface AuthorDialogProps {
+  open: boolean;
   author?: Author | null;
   onSubmit: (data: AuthorFormData, photo?: File) => Promise<void>;
-  onCancel: () => void;
+  onClose: () => void;
   loading?: boolean;
 }
 
-export const AuthorForm: React.FC<AuthorFormProps> = ({
+export const AuthorDialog: React.FC<AuthorDialogProps> = ({
+  open,
   author,
   onSubmit,
-  onCancel,
+  onClose,
   loading = false,
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -54,6 +56,20 @@ export const AuthorForm: React.FC<AuthorFormProps> = ({
     nationality: author?.nationality || "",
     genre: author?.genre || "",
   });
+
+  // Reset form when dialog opens/closes or author changes
+  React.useEffect(() => {
+    if (open) {
+      setFormData({
+        authorName: author?.authorName || "",
+        authorBio: author?.authorBio || "",
+        nationality: author?.nationality || "",
+        genre: author?.genre || "",
+      });
+      setPhotoPreview(author?.photoUrl || "");
+      setSelectedFile(null);
+    }
+  }, [open, author]);
 
   const handleInputChange = (field: keyof AuthorFormData, value: string) => {
     setFormData((prev) => ({
@@ -81,8 +97,7 @@ export const AuthorForm: React.FC<AuthorFormProps> = ({
     }
   };
 
-  const handleSubmit = async (event: React.FormEvent) => {
-    event.preventDefault();
+  const handleSubmit = async () => {
     if (!formData.authorName.trim()) {
       return;
     }
@@ -93,33 +108,71 @@ export const AuthorForm: React.FC<AuthorFormProps> = ({
   const isEditing = !!author;
 
   return (
-    <Container maxWidth="md">
-      <Paper elevation={3} sx={{ p: 4, mt: 3 }}>
-        {/* Header */}
-        <Box sx={{ mb: 4 }}>
-          <Stack direction="row" alignItems="center" spacing={2} sx={{ mb: 2 }}>
-            <Button
-              startIcon={<ArrowBackIcon />}
-              onClick={onCancel}
-              disabled={loading}
-              sx={{ color: "#666" }}
-            >
-              Back to Authors
-            </Button>
-          </Stack>
-          <Typography variant="h4" sx={{ fontWeight: 600, color: "#333" }}>
-            {isEditing ? "Edit Author" : "Add New Author"}
-          </Typography>
+    <Dialog
+      open={open}
+      onClose={onClose}
+      maxWidth="sm"
+      fullWidth
+      PaperProps={{
+        sx: {
+          borderRadius: 3,
+          maxHeight: "90vh",
+        },
+      }}
+    >
+      <DialogContent
+        sx={{
+          p: 0,
+          overflow: "hidden",
+          display: "flex",
+          flexDirection: "column",
+        }}
+      >
+        {/* Close Button */}
+        <Box sx={{ position: "absolute", top: 16, right: 16, zIndex: 1 }}>
+          <IconButton
+            onClick={onClose}
+            disabled={loading}
+            sx={{
+              bgcolor: "rgba(0,0,0,0.1)",
+              "&:hover": {
+                bgcolor: "rgba(0,0,0,0.2)",
+              },
+            }}
+          >
+            <CloseIcon />
+          </IconButton>
         </Box>
 
-        <form onSubmit={handleSubmit}>
+        {/* Main Content */}
+        <Box
+          sx={{
+            p: 3,
+            pb: 2,
+            display: "flex",
+            flexDirection: "column",
+          }}
+        >
+          {/* Header */}
+          <Typography
+            variant="h5"
+            align="center"
+            sx={{
+              mb: 2,
+              fontWeight: 600,
+              color: "#333",
+            }}
+          >
+            {isEditing ? "Edit Author" : "Add New Author"}
+          </Typography>
+
           {/* Profile Photo Upload */}
           <Box
             sx={{
               display: "flex",
               flexDirection: "column",
               alignItems: "center",
-              mb: 4,
+              mb: 3,
             }}
           >
             <input
@@ -135,9 +188,9 @@ export const AuthorForm: React.FC<AuthorFormProps> = ({
               alt={formData.authorName}
               onClick={() => fileInputRef.current?.click()}
               sx={{
-                width: 120,
-                height: 120,
-                fontSize: 48,
+                width: 100,
+                height: 100,
+                fontSize: 36,
                 bgcolor: "#1976d2",
                 border: "4px solid #fff",
                 boxShadow: "0 4px 16px rgba(0,0,0,0.1)",
@@ -146,6 +199,21 @@ export const AuthorForm: React.FC<AuthorFormProps> = ({
                 "&:hover": {
                   transform: "scale(1.05)",
                   boxShadow: "0 6px 20px rgba(0,0,0,0.15)",
+                },
+                position: "relative",
+                "&::after": {
+                  content: '""',
+                  position: "absolute",
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  borderRadius: "50%",
+                  border: "2px dashed transparent",
+                  transition: "border-color 0.2s",
+                },
+                "&:hover::after": {
+                  borderColor: "#1976d2",
                 },
               }}
             >
@@ -177,18 +245,15 @@ export const AuthorForm: React.FC<AuthorFormProps> = ({
             sx={{
               display: "flex",
               flexDirection: "column",
-              gap: 3,
+              gap: 2,
             }}
           >
             {/* Author Name */}
             <TextField
               fullWidth
-              label="Author Name *"
-              placeholder="Enter author name"
+              placeholder="Author Name"
               value={formData.authorName}
               onChange={(e) => handleInputChange("authorName", e.target.value)}
-              required
-              disabled={loading}
               InputProps={{
                 startAdornment: (
                   <InputAdornment position="start">
@@ -199,34 +264,16 @@ export const AuthorForm: React.FC<AuthorFormProps> = ({
               sx={{
                 "& .MuiOutlinedInput-root": {
                   borderRadius: 2,
-                },
-              }}
-            />
-
-            {/* Biography */}
-            <TextField
-              fullWidth
-              label="Biography *"
-              placeholder="Enter author biography"
-              multiline
-              rows={4}
-              value={formData.authorBio}
-              onChange={(e) => handleInputChange("authorBio", e.target.value)}
-              required
-              disabled={loading}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment
-                    position="start"
-                    sx={{ alignSelf: "flex-start", mt: 1 }}
-                  >
-                    <DescriptionIcon sx={{ color: "#666" }} />
-                  </InputAdornment>
-                ),
-              }}
-              sx={{
-                "& .MuiOutlinedInput-root": {
-                  borderRadius: 2,
+                  backgroundColor: "#fafafa",
+                  "& fieldset": {
+                    borderColor: "#e0e0e0",
+                  },
+                  "&:hover fieldset": {
+                    borderColor: "#bdbdbd",
+                  },
+                  "&.Mui-focused fieldset": {
+                    borderColor: "#1976d2",
+                  },
                 },
               }}
             />
@@ -243,11 +290,9 @@ export const AuthorForm: React.FC<AuthorFormProps> = ({
             {/* Genre */}
             <TextField
               fullWidth
-              label="Genre"
-              placeholder="Enter preferred genre"
+              placeholder="Genre"
               value={formData.genre}
               onChange={(e) => handleInputChange("genre", e.target.value)}
-              disabled={loading}
               InputProps={{
                 startAdornment: (
                   <InputAdornment position="start">
@@ -258,6 +303,51 @@ export const AuthorForm: React.FC<AuthorFormProps> = ({
               sx={{
                 "& .MuiOutlinedInput-root": {
                   borderRadius: 2,
+                  backgroundColor: "#fafafa",
+                  "& fieldset": {
+                    borderColor: "#e0e0e0",
+                  },
+                  "&:hover fieldset": {
+                    borderColor: "#bdbdbd",
+                  },
+                  "&.Mui-focused fieldset": {
+                    borderColor: "#1976d2",
+                  },
+                },
+              }}
+            />
+
+            {/* Biography */}
+            <TextField
+              fullWidth
+              placeholder="Biography"
+              multiline
+              rows={2}
+              value={formData.authorBio}
+              onChange={(e) => handleInputChange("authorBio", e.target.value)}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment
+                    position="start"
+                    sx={{ alignSelf: "flex-start", mt: 1 }}
+                  >
+                    <DescriptionIcon sx={{ color: "#666" }} />
+                  </InputAdornment>
+                ),
+              }}
+              sx={{
+                "& .MuiOutlinedInput-root": {
+                  borderRadius: 2,
+                  backgroundColor: "#fafafa",
+                  "& fieldset": {
+                    borderColor: "#e0e0e0",
+                  },
+                  "&:hover fieldset": {
+                    borderColor: "#bdbdbd",
+                  },
+                  "&.Mui-focused fieldset": {
+                    borderColor: "#1976d2",
+                  },
                 },
               }}
             />
@@ -267,17 +357,17 @@ export const AuthorForm: React.FC<AuthorFormProps> = ({
               sx={{
                 display: "flex",
                 gap: 2,
-                mt: 3,
-                justifyContent: "flex-end",
+                mt: 2,
+                pt: 1,
               }}
             >
               <Button
+                fullWidth
                 variant="outlined"
-                onClick={onCancel}
+                onClick={onClose}
                 disabled={loading}
                 sx={{
                   py: 1.5,
-                  px: 4,
                   borderRadius: 2,
                   textTransform: "none",
                   fontSize: "16px",
@@ -287,16 +377,12 @@ export const AuthorForm: React.FC<AuthorFormProps> = ({
                 Cancel
               </Button>
               <Button
-                type="submit"
+                fullWidth
                 variant="contained"
-                disabled={
-                  loading ||
-                  !formData.authorName.trim() ||
-                  !formData.authorBio.trim()
-                }
+                onClick={handleSubmit}
+                disabled={loading || !formData.authorName.trim()}
                 sx={{
                   py: 1.5,
-                  px: 4,
                   borderRadius: 2,
                   textTransform: "none",
                   fontSize: "16px",
@@ -315,13 +401,13 @@ export const AuthorForm: React.FC<AuthorFormProps> = ({
                 ) : isEditing ? (
                   "Update Author"
                 ) : (
-                  "Create Author"
+                  "Add Author"
                 )}
               </Button>
             </Box>
           </Box>
-        </form>
-      </Paper>
-    </Container>
+        </Box>
+      </DialogContent>
+    </Dialog>
   );
 };

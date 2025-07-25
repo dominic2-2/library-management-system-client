@@ -3,36 +3,32 @@
 import React, { useState, useEffect, useCallback } from "react";
 import {
   Box,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
   Button,
   TextField,
   Alert,
   Snackbar,
-  Stack,
   InputAdornment,
+  Stack,
 } from "@mui/material";
 import { Search as SearchIcon } from "@mui/icons-material";
-import { CategoriesTable } from "@/components/table/categories-table";
+import { AuthorsTable } from "@/components/table/authors-table";
+import { AuthorDialog, AuthorFormData } from "@/components/form/author-dialog";
 import {
-  CategoryService,
-  PaginatedCategoriesResponse,
-} from "@/services/category-service";
-import { Category } from "@/types/category";
+  AuthorService,
+  PaginatedAuthorsResponse,
+} from "@/services/author-service";
+import { Author } from "@/types/author";
 
-export default function CategoriesPage() {
-  const [categories, setCategories] = useState<Category[]>([]);
+export default function AuthorsPage() {
+  const [authors, setAuthors] = useState<Author[]>([]);
   const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasNextPage, setHasNextPage] = useState(false);
   const [currentPage, setCurrentPage] = useState(0);
   const [totalCount, setTotalCount] = useState(0);
-  const [formOpen, setFormOpen] = useState(false);
-  const [editingItem, setEditingItem] = useState<Category | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
-  const [formData, setFormData] = useState({ name: "" });
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingAuthor, setEditingAuthor] = useState<Author | null>(null);
   const [snackbar, setSnackbar] = useState<{
     open: boolean;
     message: string;
@@ -41,7 +37,7 @@ export default function CategoriesPage() {
 
   const pageSize = 10;
 
-  const fetchCategories = async (
+  const fetchAuthors = async (
     page: number = 0,
     search?: string,
     resetData: boolean = true
@@ -54,27 +50,27 @@ export default function CategoriesPage() {
 
     try {
       // Use real API with pagination
-      const result: PaginatedCategoriesResponse =
-        await CategoryService.getCategoriesPaginated({
+      const result: PaginatedAuthorsResponse =
+        await AuthorService.getAuthorsPaginated({
           page,
           pageSize,
           searchName: search,
         });
 
       if (resetData || page === 0) {
-        setCategories(result.data);
+        setAuthors(result.data);
       } else {
-        setCategories((prev) => [...prev, ...result.data]);
+        setAuthors((prev) => [...prev, ...result.data]);
       }
 
       setHasNextPage(result.hasNextPage);
       setCurrentPage(result.currentPage);
       setTotalCount(result.totalCount);
     } catch (error) {
-      console.error("Error fetching categories:", error);
+      console.error("Error fetching authors:", error);
       setSnackbar({
         open: true,
-        message: "Failed to fetch categories",
+        message: "Failed to fetch authors",
         severity: "error",
       });
     } finally {
@@ -85,129 +81,138 @@ export default function CategoriesPage() {
 
   const handleLoadMore = useCallback(() => {
     if (!loadingMore && hasNextPage) {
-      fetchCategories(currentPage + 1, searchTerm, false);
+      fetchAuthors(currentPage + 1, searchTerm, false);
     }
   }, [loadingMore, hasNextPage, currentPage, searchTerm]);
 
   // Initial load
   useEffect(() => {
-    fetchCategories(0, "");
+    fetchAuthors(0, "");
   }, []);
+
+  // Refresh data when returning from form page
+  useEffect(() => {
+    const handleFocus = () => {
+      // Refresh the first page when window gains focus (user returns from form)
+      setCurrentPage(0);
+      fetchAuthors(0, searchTerm, true);
+    };
+
+    window.addEventListener("focus", handleFocus);
+    return () => window.removeEventListener("focus", handleFocus);
+  }, [searchTerm]);
 
   // Debounced search effect
   useEffect(() => {
     const timeoutId = setTimeout(() => {
       setCurrentPage(0);
-      fetchCategories(0, searchTerm, true);
+      fetchAuthors(0, searchTerm, true);
     }, 500); // 500ms debounce
 
     return () => clearTimeout(timeoutId);
   }, [searchTerm]);
 
   const handleAdd = () => {
-    setEditingItem(null);
-    setFormData({ name: "" });
-    setFormOpen(true);
+    setEditingAuthor(null);
+    setDialogOpen(true);
   };
 
-  const handleEdit = (item: Category) => {
-    setEditingItem(item);
-    setFormData({ name: item.categoryName });
-    setFormOpen(true);
+  const handleEdit = (item: Author) => {
+    setEditingAuthor(item);
+    setDialogOpen(true);
   };
 
-  const handleDelete = async (item: Category) => {
+  const handleDelete = async (item: Author) => {
     if (
-      window.confirm(`Are you sure you want to delete "${item.categoryName}"?`)
+      window.confirm(`Are you sure you want to delete "${item.authorName}"?`)
     ) {
       try {
-        await CategoryService.deleteCategory(item.categoryId);
+        await AuthorService.deleteAuthor(item.authorId);
         setSnackbar({
           open: true,
-          message: "Category deleted successfully",
+          message: "Author deleted successfully",
           severity: "success",
         });
         // Refresh the first page after deletion
         setCurrentPage(0);
-        fetchCategories(0, searchTerm, true);
+        fetchAuthors(0, searchTerm, true);
       } catch (error) {
-        console.error("Error deleting category:", error);
+        console.error("Error deleting author:", error);
         setSnackbar({
           open: true,
-          message: "Failed to delete category",
+          message: "Failed to delete author",
           severity: "error",
         });
       }
     }
   };
 
-  const handleFormSubmit = async () => {
-    if (!formData.name.trim()) {
-      setSnackbar({
-        open: true,
-        message: "Category name is required",
-        severity: "error",
-      });
-      return;
-    }
+  const handleCloseSnackbar = () => {
+    setSnackbar({ ...snackbar, open: false });
+  };
 
+  const handleDialogSubmit = async (data: AuthorFormData, photo?: File) => {
     try {
-      let success = false;
+      const authorData = {
+        authorName: data.authorName,
+        authorBio: data.authorBio,
+        nationality: data.nationality || "",
+        genre: data.genre || "",
+        photo: photo, // Pass the actual file
+      };
 
-      if (editingItem) {
-        success = await CategoryService.updateCategory({
-          categoryId: editingItem.categoryId,
-          categoryName: formData.name,
+      if (editingAuthor) {
+        // Update existing author
+        const success = await AuthorService.updateAuthorWithFile({
+          authorId: editingAuthor.authorId,
+          ...authorData,
         });
 
         if (success) {
           setSnackbar({
             open: true,
-            message: "Category updated successfully",
+            message: "Author updated successfully",
             severity: "success",
           });
         } else {
           throw new Error("Update failed");
         }
       } else {
-        await CategoryService.createCategory({ categoryName: formData.name });
+        // Create new author
+        await AuthorService.createAuthorWithFile(authorData);
         setSnackbar({
           open: true,
-          message: "Category created successfully",
+          message: "Author created successfully",
           severity: "success",
         });
       }
 
-      setFormOpen(false);
+      setDialogOpen(false);
+      setEditingAuthor(null);
       // Refresh the first page after create/update
       setCurrentPage(0);
-      fetchCategories(0, searchTerm, true);
+      fetchAuthors(0, searchTerm, true);
     } catch (error) {
-      console.error("Error saving category:", error);
+      console.error("Error saving author:", error);
       setSnackbar({
         open: true,
-        message: editingItem
-          ? "Failed to update category"
-          : "Failed to create category",
+        message: editingAuthor
+          ? "Failed to update author"
+          : "Failed to create author",
         severity: "error",
       });
     }
   };
 
-  const handleCloseForm = () => {
-    setFormOpen(false);
-    setEditingItem(null);
-    setFormData({ name: "" });
-  };
-
-  const handleCloseSnackbar = () => {
-    setSnackbar({ ...snackbar, open: false });
+  const handleCloseDialog = () => {
+    setDialogOpen(false);
+    setEditingAuthor(null);
   };
 
   return (
     <Box>
-      <CategoriesTable
-        data={categories}
+      <AuthorsTable
+        data={authors}
         loading={loading}
         loadingMore={loadingMore}
         hasNextPage={hasNextPage}
@@ -222,12 +227,12 @@ export default function CategoriesPage() {
           <Box sx={{ p: 2, borderBottom: "1px solid rgba(224, 224, 224, 1)" }}>
             <Stack direction="row" spacing={2} alignItems="center">
               <TextField
-                label="Search Categories"
+                label="Search Authors"
                 variant="outlined"
                 size="small"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Search by category name..."
+                placeholder="Search by author name..."
                 sx={{ minWidth: 300 }}
                 InputProps={{
                   startAdornment: (
@@ -251,30 +256,13 @@ export default function CategoriesPage() {
         }
       />
 
-      {/* Add/Edit Form Dialog */}
-      <Dialog open={formOpen} onClose={handleCloseForm} maxWidth="sm" fullWidth>
-        <DialogTitle>
-          {editingItem ? "Edit Category" : "Add New Category"}
-        </DialogTitle>
-        <DialogContent>
-          <TextField
-            autoFocus
-            margin="dense"
-            label="Category Name"
-            fullWidth
-            variant="outlined"
-            value={formData.name}
-            onChange={(e) => setFormData({ name: e.target.value })}
-            sx={{ mt: 2 }}
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCloseForm}>Cancel</Button>
-          <Button onClick={handleFormSubmit} variant="contained">
-            {editingItem ? "Update" : "Create"}
-          </Button>
-        </DialogActions>
-      </Dialog>
+      {/* Add/Edit Author Dialog */}
+      <AuthorDialog
+        open={dialogOpen}
+        author={editingAuthor}
+        onSubmit={handleDialogSubmit}
+        onClose={handleCloseDialog}
+      />
 
       {/* Snackbar for notifications */}
       <Snackbar

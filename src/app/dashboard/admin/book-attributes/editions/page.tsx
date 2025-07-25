@@ -15,22 +15,22 @@ import {
   InputAdornment,
 } from "@mui/material";
 import { Search as SearchIcon } from "@mui/icons-material";
-import { CategoriesTable } from "@/components/table/categories-table";
+import { EditionsTable } from "@/components/table/editions-table";
 import {
-  CategoryService,
-  PaginatedCategoriesResponse,
-} from "@/services/category-service";
-import { Category } from "@/types/category";
+  EditionService,
+  PaginatedEditionsResponse,
+} from "@/services/edition-service";
+import { Edition } from "@/types/edition";
 
-export default function CategoriesPage() {
-  const [categories, setCategories] = useState<Category[]>([]);
+export default function EditionsPage() {
+  const [editions, setEditions] = useState<Edition[]>([]);
   const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasNextPage, setHasNextPage] = useState(false);
   const [currentPage, setCurrentPage] = useState(0);
   const [totalCount, setTotalCount] = useState(0);
   const [formOpen, setFormOpen] = useState(false);
-  const [editingItem, setEditingItem] = useState<Category | null>(null);
+  const [editingItem, setEditingItem] = useState<Edition | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [formData, setFormData] = useState({ name: "" });
   const [snackbar, setSnackbar] = useState<{
@@ -41,7 +41,7 @@ export default function CategoriesPage() {
 
   const pageSize = 10;
 
-  const fetchCategories = async (
+  const fetchEditions = async (
     page: number = 0,
     search?: string,
     resetData: boolean = true
@@ -54,27 +54,27 @@ export default function CategoriesPage() {
 
     try {
       // Use real API with pagination
-      const result: PaginatedCategoriesResponse =
-        await CategoryService.getCategoriesPaginated({
+      const result: PaginatedEditionsResponse =
+        await EditionService.getEditionsPaginated({
           page,
           pageSize,
           searchName: search,
         });
 
       if (resetData || page === 0) {
-        setCategories(result.data);
+        setEditions(result.data);
       } else {
-        setCategories((prev) => [...prev, ...result.data]);
+        setEditions((prev) => [...prev, ...result.data]);
       }
 
       setHasNextPage(result.hasNextPage);
       setCurrentPage(result.currentPage);
       setTotalCount(result.totalCount);
     } catch (error) {
-      console.error("Error fetching categories:", error);
+      console.error("Error fetching editions:", error);
       setSnackbar({
         open: true,
-        message: "Failed to fetch categories",
+        message: "Failed to fetch editions",
         severity: "error",
       });
     } finally {
@@ -85,20 +85,20 @@ export default function CategoriesPage() {
 
   const handleLoadMore = useCallback(() => {
     if (!loadingMore && hasNextPage) {
-      fetchCategories(currentPage + 1, searchTerm, false);
+      fetchEditions(currentPage + 1, searchTerm, false);
     }
   }, [loadingMore, hasNextPage, currentPage, searchTerm]);
 
   // Initial load
   useEffect(() => {
-    fetchCategories(0, "");
+    fetchEditions(0, "");
   }, []);
 
   // Debounced search effect
   useEffect(() => {
     const timeoutId = setTimeout(() => {
       setCurrentPage(0);
-      fetchCategories(0, searchTerm, true);
+      fetchEditions(0, searchTerm, true);
     }, 500); // 500ms debounce
 
     return () => clearTimeout(timeoutId);
@@ -110,31 +110,31 @@ export default function CategoriesPage() {
     setFormOpen(true);
   };
 
-  const handleEdit = (item: Category) => {
+  const handleEdit = (item: Edition) => {
     setEditingItem(item);
-    setFormData({ name: item.categoryName });
+    setFormData({ name: item.editionName });
     setFormOpen(true);
   };
 
-  const handleDelete = async (item: Category) => {
+  const handleDelete = async (item: Edition) => {
     if (
-      window.confirm(`Are you sure you want to delete "${item.categoryName}"?`)
+      window.confirm(`Are you sure you want to delete "${item.editionName}"?`)
     ) {
       try {
-        await CategoryService.deleteCategory(item.categoryId);
+        await EditionService.deleteEdition(item.editionId);
         setSnackbar({
           open: true,
-          message: "Category deleted successfully",
+          message: "Edition deleted successfully",
           severity: "success",
         });
         // Refresh the first page after deletion
         setCurrentPage(0);
-        fetchCategories(0, searchTerm, true);
+        fetchEditions(0, searchTerm, true);
       } catch (error) {
-        console.error("Error deleting category:", error);
+        console.error("Error deleting edition:", error);
         setSnackbar({
           open: true,
-          message: "Failed to delete category",
+          message: "Failed to delete edition",
           severity: "error",
         });
       }
@@ -145,7 +145,7 @@ export default function CategoriesPage() {
     if (!formData.name.trim()) {
       setSnackbar({
         open: true,
-        message: "Category name is required",
+        message: "Edition name is required",
         severity: "error",
       });
       return;
@@ -155,25 +155,25 @@ export default function CategoriesPage() {
       let success = false;
 
       if (editingItem) {
-        success = await CategoryService.updateCategory({
-          categoryId: editingItem.categoryId,
-          categoryName: formData.name,
+        success = await EditionService.updateEdition({
+          editionId: editingItem.editionId,
+          editionName: formData.name,
         });
 
         if (success) {
           setSnackbar({
             open: true,
-            message: "Category updated successfully",
+            message: "Edition updated successfully",
             severity: "success",
           });
         } else {
           throw new Error("Update failed");
         }
       } else {
-        await CategoryService.createCategory({ categoryName: formData.name });
+        await EditionService.createEdition({ editionName: formData.name });
         setSnackbar({
           open: true,
-          message: "Category created successfully",
+          message: "Edition created successfully",
           severity: "success",
         });
       }
@@ -181,14 +181,14 @@ export default function CategoriesPage() {
       setFormOpen(false);
       // Refresh the first page after create/update
       setCurrentPage(0);
-      fetchCategories(0, searchTerm, true);
+      fetchEditions(0, searchTerm, true);
     } catch (error) {
-      console.error("Error saving category:", error);
+      console.error("Error saving edition:", error);
       setSnackbar({
         open: true,
         message: editingItem
-          ? "Failed to update category"
-          : "Failed to create category",
+          ? "Failed to update edition"
+          : "Failed to create edition",
         severity: "error",
       });
     }
@@ -206,8 +206,8 @@ export default function CategoriesPage() {
 
   return (
     <Box>
-      <CategoriesTable
-        data={categories}
+      <EditionsTable
+        data={editions}
         loading={loading}
         loadingMore={loadingMore}
         hasNextPage={hasNextPage}
@@ -222,12 +222,12 @@ export default function CategoriesPage() {
           <Box sx={{ p: 2, borderBottom: "1px solid rgba(224, 224, 224, 1)" }}>
             <Stack direction="row" spacing={2} alignItems="center">
               <TextField
-                label="Search Categories"
+                label="Search Editions"
                 variant="outlined"
                 size="small"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Search by category name..."
+                placeholder="Search by edition name..."
                 sx={{ minWidth: 300 }}
                 InputProps={{
                   startAdornment: (
@@ -254,13 +254,13 @@ export default function CategoriesPage() {
       {/* Add/Edit Form Dialog */}
       <Dialog open={formOpen} onClose={handleCloseForm} maxWidth="sm" fullWidth>
         <DialogTitle>
-          {editingItem ? "Edit Category" : "Add New Category"}
+          {editingItem ? "Edit Edition" : "Add New Edition"}
         </DialogTitle>
         <DialogContent>
           <TextField
             autoFocus
             margin="dense"
-            label="Category Name"
+            label="Edition Name"
             fullWidth
             variant="outlined"
             value={formData.name}

@@ -1,15 +1,10 @@
-import { Category } from "@/types/book";
+import {
+  Category,
+  CategoryCreateRequest,
+  CategoryUpdateRequest,
+} from "@/types/category";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5027";
-
-export interface CategoryCreateRequest {
-  category_name: string;
-}
-
-export interface CategoryUpdateRequest {
-  category_id: number;
-  category_name: string;
-}
 
 // API response interfaces
 interface ApiCategoryItem {
@@ -19,9 +14,19 @@ interface ApiCategoryItem {
   bookCount: number;
 }
 
-interface ApiCategoriesResponse {
-  $id: string;
-  $values: ApiCategoryItem[];
+// Pagination interfaces
+export interface PaginatedCategoriesResponse {
+  data: Category[];
+  totalCount: number;
+  hasNextPage: boolean;
+  currentPage: number;
+  pageSize: number;
+}
+
+export interface PaginationParams {
+  page?: number;
+  pageSize?: number;
+  searchName?: string;
 }
 
 export class CategoryService {
@@ -31,15 +36,21 @@ export class CategoryService {
 
   private static transformApiResponse(apiData: ApiCategoryItem[]): Category[] {
     return apiData.map((item) => ({
-      category_id: item.categoryId,
-      category_name: item.categoryName,
-      book_count: item.bookCount,
+      categoryId: item.categoryId,
+      categoryName: item.categoryName,
+      bookCount: item.bookCount,
     }));
   }
 
-  static async getCategories(): Promise<Category[]> {
+  static async getCategories(searchName?: string): Promise<Category[]> {
     try {
-      const url = this.buildUrl("Categories");
+      let url = this.buildUrl("Categories");
+
+      if (searchName && searchName.trim()) {
+        const encodedSearchName = encodeURIComponent(searchName.trim());
+        url += `?$filter=contains(tolower(CategoryName), tolower('${encodedSearchName}'))`;
+      }
+
       console.log("Fetching categories from:", url);
 
       const response = await fetch(url, {
@@ -53,20 +64,48 @@ export class CategoryService {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      const apiResponse: ApiCategoriesResponse = await response.json();
+      const rawData = await response.json();
 
-      // Validate API response structure
-      if (!apiResponse?.$values || !Array.isArray(apiResponse.$values)) {
-        throw new Error("Invalid API response structure");
+      // Nếu API trả về mảng trực tiếp (Category[])
+      if (!Array.isArray(rawData)) {
+        throw new Error("Invalid API response: expected array");
       }
 
-      const transformedCategories = this.transformApiResponse(
-        apiResponse.$values
-      );
-
+      const transformedCategories = this.transformApiResponse(rawData);
       return transformedCategories;
     } catch (error) {
       console.error("Error fetching categories:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get paginated categories with infinite scroll support
+   * Uses the existing API and simulates pagination client-side until backend supports it
+   */
+  static async getCategoriesPaginated(
+    params: PaginationParams = {}
+  ): Promise<PaginatedCategoriesResponse> {
+    try {
+      const { page = 0, pageSize = 10, searchName } = params;
+
+      // Get all categories from existing API
+      const allCategories = await this.getCategories(searchName);
+
+      // Simulate pagination client-side
+      const startIndex = page * pageSize;
+      const endIndex = startIndex + pageSize;
+      const paginatedData = allCategories.slice(startIndex, endIndex);
+
+      return {
+        data: paginatedData,
+        totalCount: allCategories.length,
+        hasNextPage: endIndex < allCategories.length,
+        currentPage: page,
+        pageSize,
+      };
+    } catch (error) {
+      console.error("Error fetching paginated categories:", error);
       throw error;
     }
   }
@@ -91,9 +130,9 @@ export class CategoryService {
 
       // Transform single category response
       const category: Category = {
-        category_id: apiCategory.categoryId,
-        category_name: apiCategory.categoryName,
-        book_count: apiCategory.bookCount,
+        categoryId: apiCategory.categoryId,
+        categoryName: apiCategory.categoryName,
+        bookCount: apiCategory.bookCount,
       };
 
       return category;
@@ -124,9 +163,9 @@ export class CategoryService {
 
       // Transform response to Category type
       const category: Category = {
-        category_id: apiCategory.categoryId,
-        category_name: apiCategory.categoryName,
-        book_count: apiCategory.bookCount,
+        categoryId: apiCategory.categoryId,
+        categoryName: apiCategory.categoryName,
+        bookCount: apiCategory.bookCount,
       };
 
       return category;
@@ -136,33 +175,28 @@ export class CategoryService {
     }
   }
 
-  static async updateCategory(data: CategoryUpdateRequest): Promise<Category> {
+  static async updateCategory(data: CategoryUpdateRequest) {
     try {
-      const url = this.buildUrl(`Categories/${data.category_id}`);
-      console.log("Updating category:", url, data);
+      const url = this.buildUrl(`Categories/${data.categoryId}`);
+      console.log("Updating category:", url, data.categoryName);
 
       const response = await fetch(url, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(data),
+        body: JSON.stringify({ categoryName: data.categoryName }),
       });
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+      if (response.status === 204) {
+        // No content => update thành công
+        return true;
+      } else if (response.status === 404) {
+        // Not found => thất bại
+        return false;
+      } else {
+        throw new Error(`Unexpected status: ${response.status}`);
       }
-
-      const apiCategory: ApiCategoryItem = await response.json();
-
-      // Transform response to Category type
-      const category: Category = {
-        category_id: apiCategory.categoryId,
-        category_name: apiCategory.categoryName,
-        book_count: apiCategory.bookCount,
-      };
-
-      return category;
     } catch (error) {
       console.error("Error updating category:", error);
       throw error;

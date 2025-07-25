@@ -1,14 +1,32 @@
-import { PaperQuality } from "@/types/book";
+import {
+  PaperQuality,
+  PaperQualityCreateRequest,
+  PaperQualityUpdateRequest,
+} from "@/types/paper-quality";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5027";
 
-export interface PaperQualityCreateRequest {
-  paper_quality_name: string;
+// API response interfaces
+interface ApiPaperQualityItem {
+  $id: string;
+  paperQualityId: number;
+  paperQualityName: string;
+  bookCount: number;
 }
 
-export interface PaperQualityUpdateRequest {
-  paper_quality_id: number;
-  paper_quality_name: string;
+// Pagination interfaces
+export interface PaginatedPaperQualitiesResponse {
+  data: PaperQuality[];
+  totalCount: number;
+  hasNextPage: boolean;
+  currentPage: number;
+  pageSize: number;
+}
+
+export interface PaginationParams {
+  page?: number;
+  pageSize?: number;
+  searchName?: string;
 }
 
 export class PaperQualityService {
@@ -16,10 +34,24 @@ export class PaperQualityService {
     return `${API_BASE_URL}/api/${endpoint}`;
   }
 
-  static async getPaperQualities(): Promise<PaperQuality[]> {
+  private static transformApiResponse(
+    apiData: ApiPaperQualityItem[]
+  ): PaperQuality[] {
+    return apiData.map((item) => ({
+      paperQualityId: item.paperQualityId,
+      paperQualityName: item.paperQualityName,
+      bookCount: item.bookCount,
+    }));
+  }
+
+  static async getPaperQualities(searchName?: string): Promise<PaperQuality[]> {
     try {
-      const url = this.buildUrl("PaperQualities");
-      console.log("Fetching paper qualities from:", url);
+      let url = this.buildUrl("PaperQualities");
+
+      if (searchName && searchName.trim()) {
+        const encodedSearchName = encodeURIComponent(searchName.trim());
+        url += `?$filter=contains(tolower(PaperQualityName), tolower('${encodedSearchName}'))`;
+      }
 
       const response = await fetch(url, {
         method: "GET",
@@ -32,45 +64,49 @@ export class PaperQualityService {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      const apiResponse = await response.json();
-      console.log("Paper qualities API response:", apiResponse);
+      const rawData = await response.json();
 
-      // Check if API returns incomplete data (only ids), use sample data
-      if (
-        Array.isArray(apiResponse) &&
-        apiResponse.length > 0 &&
-        apiResponse[0].hasOwnProperty("id") &&
-        !apiResponse[0].hasOwnProperty("paper_quality_name")
-      ) {
-        console.log("API returning incomplete data, using sample data");
-
-        // Sample data for development
-        const samplePaperQualities: PaperQuality[] = [
-          { paper_quality_id: 1, paper_quality_name: "Premium" },
-          { paper_quality_id: 2, paper_quality_name: "Standard" },
-          { paper_quality_id: 3, paper_quality_name: "Recycled" },
-          { paper_quality_id: 4, paper_quality_name: "Glossy" },
-          { paper_quality_id: 5, paper_quality_name: "Matte" },
-        ];
-
-        return samplePaperQualities;
+      // Nếu API trả về mảng trực tiếp (PaperQuality[])
+      if (!Array.isArray(rawData)) {
+        throw new Error("Invalid API response: expected array");
       }
 
-      return apiResponse as PaperQuality[];
+      const transformedPaperQualities = this.transformApiResponse(rawData);
+      return transformedPaperQualities;
     } catch (error) {
       console.error("Error fetching paper qualities:", error);
+      throw error;
+    }
+  }
 
-      // Fallback to sample data if API fails
-      console.log("API failed, using sample data");
-      const samplePaperQualities: PaperQuality[] = [
-        { paper_quality_id: 1, paper_quality_name: "Premium" },
-        { paper_quality_id: 2, paper_quality_name: "Standard" },
-        { paper_quality_id: 3, paper_quality_name: "Recycled" },
-        { paper_quality_id: 4, paper_quality_name: "Glossy" },
-        { paper_quality_id: 5, paper_quality_name: "Matte" },
-      ];
+  /**
+   * Get paginated paper qualities with infinite scroll support
+   * Uses the existing API and simulates pagination client-side until backend supports it
+   */
+  static async getPaperQualitiesPaginated(
+    params: PaginationParams = {}
+  ): Promise<PaginatedPaperQualitiesResponse> {
+    try {
+      const { page = 0, pageSize = 10, searchName } = params;
 
-      return samplePaperQualities;
+      // Get all paper qualities from existing API
+      const allPaperQualities = await this.getPaperQualities(searchName);
+
+      // Simulate pagination client-side
+      const startIndex = page * pageSize;
+      const endIndex = startIndex + pageSize;
+      const paginatedData = allPaperQualities.slice(startIndex, endIndex);
+
+      return {
+        data: paginatedData,
+        totalCount: allPaperQualities.length,
+        hasNextPage: endIndex < allPaperQualities.length,
+        currentPage: page,
+        pageSize,
+      };
+    } catch (error) {
+      console.error("Error fetching paginated paper qualities:", error);
+      throw error;
     }
   }
 
@@ -90,8 +126,14 @@ export class PaperQualityService {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      const paperQuality: PaperQuality = await response.json();
-      console.log("Paper quality by ID response:", paperQuality);
+      const apiPaperQuality: ApiPaperQualityItem = await response.json();
+
+      // Transform single paper quality response
+      const paperQuality: PaperQuality = {
+        paperQualityId: apiPaperQuality.paperQualityId,
+        paperQualityName: apiPaperQuality.paperQualityName,
+        bookCount: apiPaperQuality.bookCount,
+      };
 
       return paperQuality;
     } catch (error) {
@@ -119,8 +161,14 @@ export class PaperQualityService {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      const paperQuality: PaperQuality = await response.json();
-      console.log("Create paper quality response:", paperQuality);
+      const apiPaperQuality: ApiPaperQualityItem = await response.json();
+
+      // Transform response to PaperQuality type
+      const paperQuality: PaperQuality = {
+        paperQualityId: apiPaperQuality.paperQualityId,
+        paperQualityName: apiPaperQuality.paperQualityName,
+        bookCount: apiPaperQuality.bookCount,
+      };
 
       return paperQuality;
     } catch (error) {
@@ -129,11 +177,9 @@ export class PaperQualityService {
     }
   }
 
-  static async updatePaperQuality(
-    data: PaperQualityUpdateRequest
-  ): Promise<PaperQuality> {
+  static async updatePaperQuality(data: PaperQualityUpdateRequest) {
     try {
-      const url = this.buildUrl(`PaperQualities/${data.paper_quality_id}`);
+      const url = this.buildUrl(`PaperQualities/${data.paperQualityId}`);
       console.log("Updating paper quality:", url, data);
 
       const response = await fetch(url, {
@@ -141,22 +187,46 @@ export class PaperQualityService {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(data),
+        body: JSON.stringify({
+          paperQualityName: data.paperQualityName,
+        }),
       });
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+      if (response.status === 204) {
+        // No content => update thành công
+        return true;
+      } else if (response.status === 404) {
+        // Not found => thất bại
+        return false;
+      } else {
+        throw new Error(`Unexpected status: ${response.status}`);
       }
-
-      const paperQuality: PaperQuality = await response.json();
-      console.log("Update paper quality response:", paperQuality);
-
-      return paperQuality;
     } catch (error) {
       console.error("Error updating paper quality:", error);
       throw error;
     }
   }
 
-  // Delete paper quality functionality has been disabled for data protection
+  static async deletePaperQuality(id: number): Promise<void> {
+    try {
+      const url = this.buildUrl(`PaperQualities/${id}`);
+      console.log("Deleting paper quality:", url);
+
+      const response = await fetch(url, {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      console.log("Paper quality deleted successfully");
+    } catch (error) {
+      console.error("Error deleting paper quality:", error);
+      throw error;
+    }
+  }
 }
