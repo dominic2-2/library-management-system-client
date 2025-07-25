@@ -24,45 +24,52 @@ export const getBrowserInfo = (): BrowserInfo => {
 
   const userAgent = navigator.userAgent;
   
-  // Detect Browser Name & Version
+  // ✅ IMPROVED: Browser detection with correct order (Edge before Chrome)
   let browserName = 'Unknown';
   let browserVersion = 'Unknown';
   
-  if (userAgent.indexOf('Chrome') > -1) {
-    browserName = 'Chrome';
-    const match = userAgent.match(/Chrome\/(\d+)/);
+  if (userAgent.includes('Edg/')) {
+    browserName = 'Edge';
+    const match = userAgent.match(/Edg\/(\d+)/);
     browserVersion = match ? match[1] : 'Unknown';
-  } else if (userAgent.indexOf('Firefox') > -1) {
+  } else if (userAgent.includes('OPR/') || userAgent.includes('Opera')) {
+    browserName = 'Opera';
+    const match = userAgent.match(/(?:OPR|Opera)\/(\d+)/);
+    browserVersion = match ? match[1] : 'Unknown';
+  } else if (userAgent.includes('Firefox')) {
     browserName = 'Firefox';
     const match = userAgent.match(/Firefox\/(\d+)/);
     browserVersion = match ? match[1] : 'Unknown';
-  } else if (userAgent.indexOf('Safari') > -1 && userAgent.indexOf('Chrome') === -1) {
+  } else if (userAgent.includes('Chrome')) {
+    browserName = 'Chrome';
+    const match = userAgent.match(/Chrome\/(\d+)/);
+    browserVersion = match ? match[1] : 'Unknown';
+  } else if (userAgent.includes('Safari') && !userAgent.includes('Chrome')) {
     browserName = 'Safari';
     const match = userAgent.match(/Version\/(\d+)/);
     browserVersion = match ? match[1] : 'Unknown';
-  } else if (userAgent.indexOf('Edge') > -1) {
-    browserName = 'Edge';
-    const match = userAgent.match(/Edge\/(\d+)/);
-    browserVersion = match ? match[1] : 'Unknown';
-  } else if (userAgent.indexOf('Opera') > -1 || userAgent.indexOf('OPR') > -1) {
-    browserName = 'Opera';
-    const match = userAgent.match(/(?:Opera|OPR)\/(\d+)/);
-    browserVersion = match ? match[1] : 'Unknown';
   }
   
-  // Detect Operating System
+  // ✅ IMPROVED: Operating system detection
   let operatingSystem = 'Unknown';
-  const platform = navigator.platform.toLowerCase();
   
-  if (platform.indexOf('win') > -1) {
+  if (userAgent.includes('Windows NT 10.0')) {
+    operatingSystem = 'Windows 10';
+  } else if (userAgent.includes('Windows NT 6.3')) {
+    operatingSystem = 'Windows 8.1';
+  } else if (userAgent.includes('Windows NT 6.2')) {
+    operatingSystem = 'Windows 8';
+  } else if (userAgent.includes('Windows NT 6.1')) {
+    operatingSystem = 'Windows 7';
+  } else if (userAgent.includes('Windows')) {
     operatingSystem = 'Windows';
-  } else if (platform.indexOf('mac') > -1) {
-    operatingSystem = 'MacOS';
-  } else if (platform.indexOf('linux') > -1) {
+  } else if (userAgent.includes('Macintosh') || userAgent.includes('Mac OS X')) {
+    operatingSystem = 'macOS';
+  } else if (userAgent.includes('Linux')) {
     operatingSystem = 'Linux';
-  } else if (userAgent.indexOf('Android') > -1) {
+  } else if (userAgent.includes('Android')) {
     operatingSystem = 'Android';
-  } else if (userAgent.indexOf('iPhone') > -1 || userAgent.indexOf('iPad') > -1) {
+  } else if (userAgent.includes('iPhone') || userAgent.includes('iPad')) {
     operatingSystem = 'iOS';
   }
   
@@ -82,12 +89,12 @@ export const getBrowserInfo = (): BrowserInfo => {
   };
 };
 
-// Helper function to get a summary string
+// ✅ Helper function to get a summary string
 export const getBrowserSummary = (browserInfo: BrowserInfo): string => {
   return `${browserInfo.browserName} ${browserInfo.browserVersion} on ${browserInfo.operatingSystem}`;
 };
 
-// Helper function to detect if mobile
+// ✅ Helper function to detect if mobile
 export const isMobile = (): boolean => {
   if (typeof window === 'undefined') return false;
   
@@ -96,7 +103,7 @@ export const isMobile = (): boolean => {
   );
 };
 
-// Helper function to detect if touch device
+// ✅ Helper function to detect if touch device
 export const isTouchDevice = (): boolean => {
   if (typeof window === 'undefined') return false;
   
