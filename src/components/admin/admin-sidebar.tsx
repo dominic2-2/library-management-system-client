@@ -16,6 +16,7 @@ import {
 import {
   Dashboard as DashboardIcon,
   MenuBook as MenuBookIcon,
+  FileCopy as BookCopyIcon,
   Category as CategoryIcon,
   Style as StyleIcon,
   Description as DescriptionIcon,
@@ -55,6 +56,12 @@ const adminMenuItems: MenuItem[] = [
     path: "/dashboard/admin/book",
   },
   {
+    text: "Book Copy",
+    icon: <BookCopyIcon />,
+    path: "/dashboard/admin/book-copy",
+  },
+  {
+
     text: "User Management",
     icon: <PersonIcon />,
     path: "/dashboard/admin/user-management",

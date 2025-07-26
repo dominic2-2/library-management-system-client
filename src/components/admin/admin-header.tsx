@@ -91,7 +91,7 @@ export const AdminHeader: React.FC = () => {
   const [openSidebar, setOpenSidebar] = useState(false);
 
   if (loading) return null;
-
+        
   const handleProfileMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorEl(event.currentTarget);
   };
@@ -263,7 +263,6 @@ export const AdminHeader: React.FC = () => {
           </Menu>
         </Box>
       </Toolbar>
-
       {/* Notification Menu */}
       <Menu
         anchorEl={anchorNoti}

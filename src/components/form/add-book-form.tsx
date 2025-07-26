@@ -20,26 +20,19 @@ import {
   Autocomplete,
   Chip,
 } from "@mui/material";
-import { Close, PhotoCamera as PhotoCameraIcon } from "@mui/icons-material";
+import { Close, PhotoCamera as PhotoCameraIcon, Add as AddIcon, Delete as DeleteIcon } from "@mui/icons-material";
 import { CategoryService } from "@/services/category-service";
 import { AuthorService } from "@/services/author-service";
 import { Category } from "@/types/category";
 import { Author } from "@/types/author";
+import { BookFormData, BookWithDetails, BookVolumeRequest } from "@/types/book";
 
 interface AddBookFormProps {
   open: boolean;
   onClose: () => void;
   onSubmit: (bookData: BookFormData, coverImage?: File) => void;
   loading?: boolean;
-}
-
-interface BookFormData {
-  title: string;
-  language: string;
-  bookStatus: string;
-  description: string;
-  categoryId: number;
-  authorIds: number[];
+  book?: BookWithDetails | null; // Add book prop for edit mode
 }
 
 export const AddBookForm: React.FC<AddBookFormProps> = ({
@@ -47,6 +40,7 @@ export const AddBookForm: React.FC<AddBookFormProps> = ({
   onClose,
   onSubmit,
   loading = false,
+  book = null, // Default to null for add mode
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [imagePreview, setImagePreview] = useState<string>("");
@@ -59,6 +53,7 @@ export const AddBookForm: React.FC<AddBookFormProps> = ({
     description: "",
     categoryId: 0,
     authorIds: [],
+    volumes: [{ volumeNumber: 1, volumeTitle: "", description: "" }]
   });
 
   const [categories, setCategories] = useState<Category[]>([]);
@@ -66,6 +61,65 @@ export const AddBookForm: React.FC<AddBookFormProps> = ({
   const [authors, setAuthors] = useState<Author[]>([]);
   const [authorsLoading, setAuthorsLoading] = useState(false);
   const [selectedAuthors, setSelectedAuthors] = useState<Author[]>([]);
+
+  // Determine if we're in edit mode
+  const isEditMode = book !== null;
+
+  // Reset form when dialog opens/closes or book changes
+  useEffect(() => {
+    if (open) {
+      if (isEditMode && book) {
+        // Populate form with existing book data
+        setFormData({
+          title: book.title || "",
+          language: book.language || "Việt",
+          bookStatus: book.book_status || "Active",
+          description: book.description || "",
+          categoryId: book.category_id || 0,
+          authorIds: book.authors?.map(author => author.author_id) || [],
+          volumes: book.volumes?.length > 0 
+            ? book.volumes.map(vol => ({
+                volumeId: vol.volume_id, // Include existing volume ID for updates
+                volumeNumber: vol.volume_number,
+                volumeTitle: vol.volume_title || "",
+                description: ""
+              }))
+            : [{ volumeNumber: 1, volumeTitle: "", description: "" }]
+        });
+        
+        // Set image preview if book has cover
+        if (book.coverImg) {
+          setImagePreview(book.coverImg);
+        }
+        
+        // Set selected authors
+        const bookAuthors = book.authors?.map((author: any) => ({
+          authorId: author.author_id,
+          authorName: author.author_name,
+          authorBio: author.bio || "",
+          nationality: "",
+          genre: "",
+          photoUrl: "",
+          bookCount: 0,
+        })) || [];
+        setSelectedAuthors(bookAuthors);
+      } else {
+        // Reset form for add mode
+        setFormData({
+          title: "",
+          language: "Việt",
+          bookStatus: "Active",
+          description: "",
+          categoryId: 0,
+          authorIds: [],
+          volumes: [{ volumeNumber: 1, volumeTitle: "", description: "" }]
+        });
+        setSelectedAuthors([]);
+        setImagePreview("");
+        setSelectedImage(null);
+      }
+    }
+  }, [open, isEditMode, book]);
 
   // Fetch categories and authors when dialog opens
   useEffect(() => {
@@ -80,8 +134,9 @@ export const AddBookForm: React.FC<AddBookFormProps> = ({
             : [];
           setCategories(validCategories);
 
-          if (validCategories.length > 0 && formData.categoryId === 0) {
-            setFormData((prev) => ({
+          // Set default category if not in edit mode
+          if (!isEditMode && validCategories.length > 0 && formData.categoryId === 0) {
+            setFormData((prev: BookFormData) => ({
               ...prev,
               categoryId: validCategories[0].categoryId,
             }));
@@ -103,18 +158,57 @@ export const AddBookForm: React.FC<AddBookFormProps> = ({
 
       fetchData();
     }
-  }, [open, formData.categoryId]);
+  }, [open, isEditMode, formData.categoryId]);
 
   const handleInputChange = (
     field: keyof BookFormData,
     value: string | number
   ) => {
-    setFormData((prev) => ({
+    setFormData((prev: BookFormData) => ({
       ...prev,
       [field]: value,
     }));
   };
 
+  // Volume management functions
+  const handleVolumeChange = (
+    index: number,
+    field: keyof BookVolumeRequest,
+    value: string | number
+  ) => {
+    setFormData((prev: BookFormData) => ({
+      ...prev,
+      volumes: prev.volumes.map((volume, i) =>
+        i === index ? { ...volume, [field]: value } : volume
+      ),
+    }));
+  };
+
+  const addVolume = () => {
+    setFormData((prev: BookFormData) => ({
+      ...prev,
+      volumes: [
+        ...prev.volumes,
+        {
+          // No volumeId for new volumes - backend will create them
+          volumeNumber: prev.volumes.length + 1,
+          volumeTitle: "",
+          description: "",
+        },
+      ],
+    }));
+  };
+
+  const removeVolume = (index: number) => {
+    if (formData.volumes.length > 1) {
+      setFormData((prev: BookFormData) => ({
+        ...prev,
+        volumes: prev.volumes
+          .filter((_, i) => i !== index)
+          .map((volume, i) => ({ ...volume, volumeNumber: i + 1 })), // Renumber volumes
+      }));
+    }
+  };
   const handleImageSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
@@ -144,10 +238,17 @@ export const AddBookForm: React.FC<AddBookFormProps> = ({
       return;
     }
 
-    onSubmit(formData, selectedImage || undefined);
+    // Prepare book data with volumes
+    const bookDataWithVolumes = {
+      ...formData,
+      volumes: formData.volumes,
+    };
+
+    onSubmit(bookDataWithVolumes, selectedImage || undefined);
   };
 
   const handleClose = () => {
+    // Reset form state
     setFormData({
       title: "",
       language: "Việt",
@@ -155,6 +256,7 @@ export const AddBookForm: React.FC<AddBookFormProps> = ({
       description: "",
       categoryId: categories.length > 0 ? categories[0].categoryId : 0,
       authorIds: [],
+      volumes: [{ volumeNumber: 1, volumeTitle: "", description: "" }]
     });
     setSelectedAuthors([]);
     setImagePreview("");
@@ -166,7 +268,9 @@ export const AddBookForm: React.FC<AddBookFormProps> = ({
     <Dialog open={open} onClose={handleClose} maxWidth="lg" fullWidth>
       <DialogTitle>
         <Box display="flex" justifyContent="space-between" alignItems="center">
-          <Typography variant="h6">Thêm Sách Mới</Typography>
+          <Typography variant="h6">
+            {isEditMode ? "Chỉnh Sửa Sách" : "Thêm Sách Mới"}
+          </Typography>
           <IconButton onClick={handleClose}>
             <Close />
           </IconButton>
@@ -251,6 +355,13 @@ export const AddBookForm: React.FC<AddBookFormProps> = ({
                   {selectedImage ? selectedImage.name : "Click để upload ảnh"}
                 </Typography>
               </Box>
+              
+              {/* Show current image info in edit mode */}
+              {isEditMode && book?.coverImg && !selectedImage && (
+                <Typography variant="caption" color="textSecondary" sx={{ mt: 1 }}>
+                  Ảnh hiện tại sẽ được giữ nếu không chọn ảnh mới
+                </Typography>
+              )}
             </Box>
 
             {/* All Book Information - Right Side */}
@@ -365,12 +476,13 @@ export const AddBookForm: React.FC<AddBookFormProps> = ({
                   value={selectedAuthors}
                   onChange={(_, newValue) => {
                     setSelectedAuthors(newValue);
-                    setFormData((prev) => ({
+                    setFormData((prev: BookFormData) => ({
                       ...prev,
                       authorIds: newValue.map((author) => author.authorId),
                     }));
                   }}
                   getOptionLabel={(option) => option.authorName}
+                  isOptionEqualToValue={(option, value) => option.authorId === value.authorId}
                   filterOptions={(options, { inputValue }) => {
                     return options.filter(
                       (option) =>
@@ -441,6 +553,77 @@ export const AddBookForm: React.FC<AddBookFormProps> = ({
                   sx={{ width: "100%" }}
                 />
               </Box>
+              {/* Volume Management Section */}
+              <Box sx={{ mt: 3 }}>
+                <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
+                  <Typography variant="h6">
+                    Tập Sách ({formData.volumes.length})
+                  </Typography>
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    startIcon={<AddIcon />}
+                    onClick={addVolume}
+                    sx={{ borderColor: "#1976d2", color: "#1976d2" }}
+                  >
+                    Thêm Tập
+                  </Button>
+                </Box>
+
+                {formData.volumes.map((volume, index) => (
+                  <Box
+                    key={index}
+                    sx={{
+                      border: "1px solid #e0e0e0",
+                      borderRadius: 2,
+                      p: 2,
+                      mb: 2,
+                      bgcolor: "#fafafa",
+                    }}
+                  >
+                    <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
+                      <Typography variant="subtitle1" sx={{ fontWeight: "bold" }}>
+                        Tập {volume.volumeNumber}
+                      </Typography>
+                      {formData.volumes.length > 1 && (
+                        <IconButton
+                          size="small"
+                          onClick={() => removeVolume(index)}
+                          sx={{ color: "#d32f2f" }}
+                        >
+                          <DeleteIcon />
+                        </IconButton>
+                      )}
+                    </Box>
+
+                    <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
+                      <TextField
+                        fullWidth
+                        label={`Tên tập ${volume.volumeNumber}`}
+                        value={volume.volumeTitle || ""}
+                        onChange={(e) =>
+                          handleVolumeChange(index, "volumeTitle", e.target.value)
+                        }
+                        placeholder={`Nhập tên cho tập ${volume.volumeNumber}`}
+                        size="small"
+                      />
+                    </Box>
+
+                    <TextField
+                      fullWidth
+                      label={`Mô tả tập ${volume.volumeNumber}`}
+                      value={volume.description || ""}
+                      onChange={(e) =>
+                        handleVolumeChange(index, "description", e.target.value)
+                      }
+                      placeholder={`Mô tả nội dung tập ${volume.volumeNumber}`}
+                      multiline
+                      rows={2}
+                      size="small"
+                    />
+                  </Box>
+                ))}
+              </Box>
             </Box>
           </Box>
         </Box>
@@ -462,7 +645,10 @@ export const AddBookForm: React.FC<AddBookFormProps> = ({
           }
           sx={{ bgcolor: "#2c5aa0", "&:hover": { bgcolor: "#1e3f6b" } }}
         >
-          {loading ? "Đang thêm..." : "Thêm sách"}
+          {loading ? 
+            (isEditMode ? "Đang cập nhật..." : "Đang thêm...") : 
+            (isEditMode ? "Cập nhật sách" : "Thêm sách")
+          }
         </Button>
       </DialogActions>
     </Dialog>

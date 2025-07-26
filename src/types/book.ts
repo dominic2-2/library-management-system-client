@@ -149,3 +149,92 @@ export interface BookVariantDto {
   totalCopies: number;
   availableCopies: number;
 }
+
+// Volume request interface matching backend
+export interface BookVolumeRequest {
+  volumeId?: number; // Optional for new volumes, required for existing volumes during update
+  volumeNumber: number;
+  volumeTitle?: string;
+  description?: string;
+}
+
+export interface BookCreateRequestWithFile {
+  title: string;
+  language: string;
+  bookStatus: string;
+  description: string;
+  categoryId: number;
+  authorIds: number[];
+  coverImage?: File;
+  volumes?: BookVolumeRequest[];
+}
+
+// Add missing interfaces for consistency with Author logic
+export interface BookFormData {
+  title: string;
+  language: string;
+  bookStatus: string;
+  description: string;
+  categoryId: number;
+  authorIds: number[];
+  volumes: BookVolumeRequest[];
+}
+
+export interface BookCreateRequest {
+  title: string;
+  language: string;
+  bookStatus: string;
+  description: string;
+  categoryId: number;
+  authorIds: number[];
+  coverImage?: string; // URL string for existing image
+  authors?: Author[]; // For edit mode populated data
+}
+
+export interface BookUpdateRequest extends BookCreateRequest {
+  book_id: number;
+}
+
+// API Response types for book details
+export interface BookDetailApiVolume {
+  $id: string;
+  volumeId: number;
+  volumeNumber: number;
+  volumeTitle?: string;
+  description?: string;
+}
+
+export interface BookDetailApiVariant {
+  $id: string;
+  variantId: number;
+  publisher?: string;
+  isbn?: string;
+  publicationYear?: number;
+  coverType?: string;
+  paperQuality?: string;
+  price?: number;
+  location?: string;
+}
+
+export interface BookDetailApiResponse {
+  $id: string;
+  bookId: number;
+  title: string;
+  language?: string;
+  bookStatus: string;
+  description?: string;
+  coverImg?: string;
+  categoryName?: string;
+  authorNames: {
+    $id: string;
+    $values: string[];
+  };
+  volumes: {
+    $id: string;
+    $values: BookDetailApiVolume[];
+  };
+  variants: {
+    $id: string;
+    $values: BookDetailApiVariant[];
+  };
+}
