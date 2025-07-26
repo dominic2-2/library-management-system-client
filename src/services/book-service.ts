@@ -1,4 +1,8 @@
-import { BookWithDetails, BookCreateRequestWithFile, BookDetailApiResponse } from "@/types/book";
+import {
+  BookWithDetails,
+  BookCreateRequestWithFile,
+  BookDetailApiResponse,
+} from "@/types/book";
 import { ENV } from "@/config/env";
 
 // Types for the API response structure
@@ -73,7 +77,6 @@ const buildODataQuery = (params: {
   return queryParams.length > 0 ? `?${queryParams.join("&")}` : "";
 };
 
-// Base API URL for books
 const BOOKS_API_BASE = `${ENV.apiUrl}/manage/Book`;
 
 // HTTP request helper
@@ -95,7 +98,7 @@ const apiRequest = async <T>(
     throw new Error(`HTTP error! status: ${response.status} - ${errorText}`);
   }
 
-  const data = await response.json();   
+  const data = await response.json();
   return data;
 };
 
@@ -119,7 +122,9 @@ export const fetchBooks = async (
     orderBy = "title",
   } = options;
 
+  // Base API URL for books
   const filters: string[] = [];
+  console.log("🚀 ~ BOOKS_API_BASE:", BOOKS_API_BASE);
 
   // Add search filter
   if (search) {
@@ -161,7 +166,7 @@ export const fetchBooks = async (
     } else {
       // Direct array (fallback)
       booksData = Array.isArray(response) ? response : [];
-    } 
+    }
 
     // Transform the data to match our expected structure
     const transformedBooks = booksData.map((book: ApiBook) => {
@@ -316,14 +321,14 @@ export const createBookWithImage = async (
 ): Promise<BookWithDetails> => {
   try {
     const formData = new FormData();
-    
+
     formData.append("Title", bookData.title);
     formData.append("Language", bookData.language);
     formData.append("BookStatus", bookData.bookStatus);
     formData.append("Description", bookData.description);
     formData.append("CategoryId", bookData.categoryId.toString());
     formData.append("AuthorIds", bookData.authorIds.join(","));
-    
+
     if (bookData.coverImage) {
       formData.append("CoverImage", bookData.coverImage);
     }
@@ -332,9 +337,15 @@ export const createBookWithImage = async (
     if (bookData.volumes && bookData.volumes.length > 0) {
       bookData.volumes.forEach((volume, index) => {
         if (volume.volumeId) {
-          formData.append(`Volumes[${index}].VolumeId`, volume.volumeId.toString());
+          formData.append(
+            `Volumes[${index}].VolumeId`,
+            volume.volumeId.toString()
+          );
         }
-        formData.append(`Volumes[${index}].VolumeNumber`, volume.volumeNumber.toString());
+        formData.append(
+          `Volumes[${index}].VolumeNumber`,
+          volume.volumeNumber.toString()
+        );
         if (volume.volumeTitle) {
           formData.append(`Volumes[${index}].VolumeTitle`, volume.volumeTitle);
         }
@@ -343,7 +354,7 @@ export const createBookWithImage = async (
         }
       });
     }
-    
+
     const response = await fetch(`${BOOKS_API_BASE}`, {
       method: "POST",
       body: formData,
@@ -387,7 +398,7 @@ export const updateBookWithImage = async (
   bookId: number,
   bookData: BookCreateRequestWithFile
 ): Promise<BookWithDetails> => {
-  console.log("🚀 ~ updateBookWithImage ~ bookId:", bookId)
+  console.log("🚀 ~ updateBookWithImage ~ bookId:", bookId);
   try {
     const formData = new FormData();
 
@@ -407,9 +418,15 @@ export const updateBookWithImage = async (
     if (bookData.volumes && bookData.volumes.length > 0) {
       bookData.volumes.forEach((volume, index) => {
         if (volume.volumeId) {
-          formData.append(`Volumes[${index}].VolumeId`, volume.volumeId.toString());
+          formData.append(
+            `Volumes[${index}].VolumeId`,
+            volume.volumeId.toString()
+          );
         }
-        formData.append(`Volumes[${index}].VolumeNumber`, volume.volumeNumber.toString());
+        formData.append(
+          `Volumes[${index}].VolumeNumber`,
+          volume.volumeNumber.toString()
+        );
         if (volume.volumeTitle) {
           formData.append(`Volumes[${index}].VolumeTitle`, volume.volumeTitle);
         }
@@ -452,7 +469,6 @@ export const deleteBook = async (bookId: number): Promise<void> => {
       const errorText = await response.text();
       throw new Error(`HTTP error! status: ${response.status} - ${errorText}`);
     }
-
   } catch (error) {
     console.error("Error deleting book:", error);
     throw new Error("Failed to delete book");
@@ -575,7 +591,7 @@ export const getBookDetails = async (
   bookId: number
 ): Promise<BookDetailApiResponse | null> => {
   try {
-    const response = await fetch(`${ENV.apiUrl}/api/manage/Book/${bookId}`, {
+    const response = await fetch(`${ENV.apiUrl}/manage/Book/${bookId}`, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
@@ -599,7 +615,7 @@ export const getBookDetails = async (
 // Test API connection
 export const testApiConnection = async (): Promise<boolean> => {
   try {
-    const response = await fetch(`${ENV.apiUrl}/api/manage/Book?$top=1`);
+    const response = await fetch(`${ENV.apiUrl}/manage/Book?$top=1`);
     return response.ok;
   } catch (error) {
     console.error("API connection test failed:", error);

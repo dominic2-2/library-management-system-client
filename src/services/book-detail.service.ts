@@ -5,7 +5,7 @@ export const bookDetailService = {
   async getBookDetail(bookId: number): Promise<BookDetailResponse> {
     try {
       const response = await fetch(
-        `${ENV.apiUrl}/api/manage/Book/${bookId}/detail`,
+        `${ENV.apiUrl}/manage/Book/${bookId}/detail`,
         {
           method: "GET",
           headers: {
