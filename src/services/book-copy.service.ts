@@ -17,7 +17,7 @@ import { EditionService } from "./edition-service";
 import { CoverTypeService } from "./cover-type-service";
 import { PaperQualityService } from "./paper-quality-service";
 
-const BASE_URL = `/api/manage/BookCopy`;
+const BASE_URL = `/manage/BookCopy`;
 
 export const bookCopyService = {
   /**
@@ -216,7 +216,7 @@ export const bookCopyService = {
     search?: string
   ): Promise<BookVolumeForCopy[]> => {
     try {
-      let url = "/api/manage/Book/getBookForCopy";
+      let url = "/manage/Book/getBookForCopy";
 
       if (search && search.trim()) {
         const filter = `$filter=contains(Title,'${encodeURIComponent(
