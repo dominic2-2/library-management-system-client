@@ -140,12 +140,7 @@ export function useUserManagement() {
       } else {
         console.log("  📝 Loading all users");
         const allUsersResult = await userService.getAllUsers(token);
-
-        // Service now handles response parsing, just map the users
-        const mappedUsers = allUsersResult.map((u: User) => ({
-          ...u,
-          id: u.userId,
-        }));
+        const mappedUsers = allUsersResult.map((u) => ({ ...u, id: u.userId }));
 
         setAllUsers(mappedUsers);
         setTotalCount(mappedUsers.length);

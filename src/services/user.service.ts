@@ -16,27 +16,7 @@ export const userService = {
     });
 
     if (!response.ok) throw new Error("Failed to fetch users");
-
-    const result = await response.json();
-
-    // Handle .NET API response format with $values
-    if (result.$values && Array.isArray(result.$values)) {
-      return result.$values;
-    }
-
-    // Fallback for direct array response
-    if (Array.isArray(result)) {
-      return result;
-    }
-
-    // Fallback for object with users property
-    if (result.users && Array.isArray(result.users)) {
-      return result.users;
-    }
-
-    // If no valid format found, return empty array
-    console.warn("Unexpected API response format:", result);
-    return [];
+    return response.json();
   },
 
   async createUser(
