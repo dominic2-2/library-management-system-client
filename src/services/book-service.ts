@@ -74,7 +74,7 @@ const buildODataQuery = (params: {
 };
 
 // Base API URL for books
-const BOOKS_API_BASE = `${ENV.apiUrl}/api/manage/Book`;
+const BOOKS_API_BASE = `${ENV.apiUrl}/manage/Book`;
 
 // HTTP request helper
 const apiRequest = async <T>(
@@ -146,7 +146,6 @@ export const fetchBooks = async (
   });
 
   try {
-
     const response = await apiRequest<ODataResponse<ApiBook> | ApiBookResponse>(
       `${BOOKS_API_BASE}${query}`
     );
@@ -459,7 +458,6 @@ export const deleteBook = async (bookId: number): Promise<void> => {
     throw new Error("Failed to delete book");
   }
 };
-
 // Delete book functionality has been disabled for data protection
 
 // Get books with pagination info
@@ -563,7 +561,7 @@ export const fetchBookCategories = async (): Promise<
 export const fetchBookStatuses = async (): Promise<string[]> => {
   try {
     const statuses = await apiRequest<string[]>(
-      `${ENV.apiUrl}/api/manage/Book/statuses`
+      `${ENV.apiUrl}/manage/Book/statuses`
     );
     return statuses;
   } catch (error) {

@@ -37,7 +37,7 @@ export interface PaginationParams {
 
 export class AuthorService {
   private static buildUrl(endpoint: string): string {
-    return `${API_BASE_URL}/api/${endpoint}`;
+    return `${API_BASE_URL}/${endpoint}`;
   }
 
   private static transformApiResponse(apiData: ApiAuthorItem[]): Author[] {

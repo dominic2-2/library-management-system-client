@@ -11,7 +11,6 @@ interface AdminLayoutProps {
 
 const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-
   // Mock current user - replace with actual auth context
   const currentUser = {
     full_name: "Bwire Mashauri",

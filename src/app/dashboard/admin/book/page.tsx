@@ -1,5 +1,6 @@
 "use client";
 
+
 import React, { useState, useEffect, useCallback } from "react";
 import {
   Box,
@@ -252,8 +253,6 @@ export default function BookManagePage(): JSX.Element {
   ): Promise<void> => {
     try {
       setAddingBook(true);
-      console.log("Submitting book:", bookData);
-
       if (coverImage) {
         console.log("Cover image:", coverImage.name, coverImage.size);
       }
@@ -314,7 +313,6 @@ export default function BookManagePage(): JSX.Element {
       setAddingBook(false);
     }
   };
-
   const handleCloseDialog = () => {
     setAddBookOpen(false);
     setEditingBook(null);
@@ -328,7 +326,6 @@ export default function BookManagePage(): JSX.Element {
     <Box sx={{ display: "flex", flexDirection: "column", minHeight: "100vh" }}>
       {/* Main Content */}
       <Container maxWidth="xl" sx={{ mb: 3, flex: 1 }}>
-      
           <BooksTable
             books={books}
             loading={loading}

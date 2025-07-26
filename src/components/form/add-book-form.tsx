@@ -35,7 +35,6 @@ interface AddBookFormProps {
   book?: BookWithDetails | null; // Add book prop for edit mode
 }
 
-
 export const AddBookForm: React.FC<AddBookFormProps> = ({
   open,
   onClose,
@@ -210,7 +209,6 @@ export const AddBookForm: React.FC<AddBookFormProps> = ({
       }));
     }
   };
-
   const handleImageSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
@@ -555,7 +553,6 @@ export const AddBookForm: React.FC<AddBookFormProps> = ({
                   sx={{ width: "100%" }}
                 />
               </Box>
-
               {/* Volume Management Section */}
               <Box sx={{ mt: 3 }}>
                 <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>

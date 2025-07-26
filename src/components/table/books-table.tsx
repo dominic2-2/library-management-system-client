@@ -122,7 +122,6 @@ export const BooksTable: React.FC<BooksTableProps> = ({
       }
     };
   }, [handleLoadMore, enableInfiniteScroll]);
-
   const getStatusColor = (
     status: string
   ): "success" | "warning" | "error" | "default" => {
